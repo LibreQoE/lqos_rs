@@ -6,10 +6,10 @@
 use anyhow::{Error, Result};
 use libbpf_sys::{
     bpf_xdp_attach, libbpf_set_strict_mode, LIBBPF_STRICT_ALL,
-    XDP_FLAGS_UPDATE_IF_NOEXIST,
+    XDP_FLAGS_UPDATE_IF_NOEXIST, bpf_obj_get, bpf_map_lookup_elem, bpf_map_get_next_key,
 };
-use nix::libc::{if_nametoindex, geteuid};
-use std::ffi::CString;
+use nix::libc::{if_nametoindex, geteuid, in6_addr};
+use std::{ffi::{CString, c_void}, ptr::null_mut};
 
 mod bpf {
     #![allow(warnings, unused)]
@@ -110,4 +110,58 @@ pub fn attach_xdp_to_interface(interface_name: &str, direction: InterfaceDirecti
     }
 
     Ok(())
+}
+
+#[repr(C)]
+#[derive(Debug)]
+struct HostCounter {
+    download_bytes : u64,
+    upload_bytes : u64,
+    download_packets : u64,
+    upload_packets : u64,
+}
+
+pub struct BpfMapReader {
+    fd: i32,
+}
+
+impl BpfMapReader {
+    pub fn open(filename: &str) -> Result<Self> {
+        let filename_c = CString::new(filename)?;
+        let fd = unsafe {
+            bpf_obj_get(filename_c.as_ptr())
+        };
+        if fd < 0 {
+            Err(Error::msg("Unable to open BPF map"))
+        } else {
+            Ok(Self{ fd })
+        }
+    }
+
+    pub fn test(&self) {
+        unsafe {
+            let mut prev_key : *mut in6_addr = null_mut();
+            let mut key : in6_addr = in6_addr { s6_addr: [0; 16] };
+            let key_ptr : *mut in6_addr = &mut key;
+            let mut counter = HostCounter {
+                download_bytes: 0,
+                download_packets: 0,
+                upload_bytes: 0,
+                upload_packets: 0,
+            };
+            let counter_ptr : *mut HostCounter = &mut counter;
+            while bpf_map_get_next_key(self.fd, prev_key as *mut c_void, key_ptr as *mut c_void) == 0 {
+                bpf_map_lookup_elem(self.fd, key_ptr as *mut c_void, counter_ptr as *mut c_void);
+                println!("{:?}", key);
+                println!("{:?}", counter);
+                prev_key = &mut key;
+            }
+        }
+    }
+}
+
+impl Drop for BpfMapReader {
+    fn drop(&mut self) {
+        let _ = nix::unistd::close(self.fd);
+    }
 }

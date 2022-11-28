@@ -33,6 +33,10 @@ fn main() {
     if compile_result.is_err() {
         println!("cargo:warning={:?}", compile_result);
     }
+    let error_message = compile_result.as_ref().unwrap().stderr.clone();
+    if !error_message.is_empty() {
+        println!("cargo:error={}", String::from_utf8(error_message).unwrap());
+    }
 
     // 2: Link the .ll file into a .o file
     // Command line:
