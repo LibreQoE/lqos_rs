@@ -1,0 +1,9 @@
+[package]
+name = "lqosd"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+lqos_config = { path = "../lqos_config" }
+lqos_sys = { path = "../lqos_sys" }

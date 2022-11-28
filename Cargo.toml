@@ -1,0 +1,13 @@
+[package]
+name = "lqos_rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[workspace]
+members = [
+    "lqos_sys", # System support for handling the XDP component
+    "lqos_config", # Configuration support
+    "lqosd", # LibreQoS Daemon
+]
