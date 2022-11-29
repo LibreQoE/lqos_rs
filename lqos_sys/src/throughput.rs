@@ -10,6 +10,7 @@ pub struct HostCounter {
     pub upload_bytes : u64,
     pub download_packets : u64,
     pub upload_packets : u64,
+    pub tc_handle: u32,
 }
 
 impl Default for HostCounter {
@@ -19,6 +20,7 @@ impl Default for HostCounter {
             download_packets: 0,
             upload_bytes: 0,
             upload_packets: 0,
+            tc_handle: 0,
         }
     }
 }
