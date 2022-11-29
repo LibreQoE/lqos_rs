@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::{ffi::{CString, c_void}, marker::PhantomData, ptr::null_mut};
 use anyhow::{Result, Error};
 use libbpf_sys::{bpf_obj_get, bpf_map_get_next_key, bpf_map_lookup_elem};
