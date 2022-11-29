@@ -11,6 +11,7 @@
 #include "common/maximums.h"
 #include "common/throughput.h"
 #include "common/lpm.h"
+#include "common/cpu_map.h"
 
 // Constant passed in during loading to either
 // 1 (facing the Internet)

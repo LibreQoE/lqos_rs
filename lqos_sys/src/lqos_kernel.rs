@@ -11,6 +11,8 @@ use libbpf_sys::{
 use nix::libc::{if_nametoindex, geteuid};
 use std::{ffi::{CString}};
 
+use crate::cpu_map::CpuMapping;
+
 mod bpf {
     #![allow(warnings, unused)]
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
@@ -108,6 +110,10 @@ pub fn attach_xdp_to_interface(interface_name: &str, direction: InterfaceDirecti
             return Err(Error::msg("Unable to attach to interface"));
         }
     }
+
+    // Configure CPU Maps
+    let cpu_map = CpuMapping::new()?;
+    cpu_map.mark_cpus_available()?;
 
     Ok(())
 }
