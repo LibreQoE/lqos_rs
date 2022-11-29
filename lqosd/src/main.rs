@@ -14,6 +14,8 @@ fn main() -> anyhow::Result<()> {
         let _ = throughput.tick(); // Ignoring errors
         let bps = throughput.bits_per_second();
         let packets = throughput.packets_per_second();
-        println!("🠗 {} bits/second ({} packets), {} 🠕 bits/second ({} packets)", bps.0, packets.0, bps.1, packets.1);
+        if throughput.cycle > 0 {
+            println!("🠗 {} bits/second ({} packets), {} 🠕 bits/second ({} packets)", bps.0, packets.0, bps.1, packets.1);
+        }
     }
 }

@@ -3,7 +3,7 @@ use lqos_sys::{get_throughput_map, XdpIpAddress};
 use std::collections::HashMap;
 
 pub struct ThroughputTracker {
-    cycle: u64,
+    pub cycle: u64,
     raw_data: HashMap<XdpIpAddress, ThroughputEntry>,
     bytes_per_second: (u64, u64),
     packets_per_second: (u64, u64),
