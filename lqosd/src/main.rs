@@ -1,20 +1,19 @@
-use std::{time::Duration, net::IpAddr};
+mod throughput_tracker;
+use std::time::Duration;
 use lqos_config::LibreQoSConfig;
-use lqos_sys::{attach_xdp_to_interface, InterfaceDirection, get_throughput_map};
+use lqos_sys::LibreQoSKernels;
 
 fn main() -> anyhow::Result<()> {
     println!("LibreQoS Daemon Starting");
     let config = LibreQoSConfig::load_from_default()?;
-    attach_xdp_to_interface(&config.internet_interface, InterfaceDirection::Internet)?;
-    attach_xdp_to_interface(&config.isp_interface, InterfaceDirection::IspNetwork)?;
+    let _kernels = LibreQoSKernels::new(&config.internet_interface, &config.isp_interface)?;
+    let mut throughput = throughput_tracker::ThroughputTracker::new();
 
     loop {
         std::thread::sleep(Duration::from_secs(1));
-        let throughput = get_throughput_map().unwrap();
-        for (ip, c) in throughput.iter() {
-            let ip: IpAddr = ip.into();
-            println!("{:<34}, 🠗 {} ({}), 🠕 {} ({})", ip, c.download_bytes, c.download_packets, c.upload_bytes, c.upload_packets);
-        }
-        println!("----------------------------------------------------------");
+        let _ = throughput.tick(); // Ignoring errors
+        let bps = throughput.bits_per_second();
+        let packets = throughput.packets_per_second();
+        println!("🠗 {} bits/second ({} packets), {} 🠕 bits/second ({} packets)", bps.0, packets.0, bps.1, packets.1);
     }
 }

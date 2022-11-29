@@ -24,7 +24,7 @@ impl Default for HostCounter {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct XdpIpAddress {
     ip: [u8; 16],
 }
@@ -35,8 +35,8 @@ impl Default for XdpIpAddress {
     }
 }
 
-impl Into<IpAddr> for XdpIpAddress {
-    fn into(self) -> IpAddr {
+impl XdpIpAddress {
+    pub fn as_ip(&self) -> IpAddr {
         if self.ip[0] == 0xFF && self.ip[1] == 0xFF &&
             self.ip[2] == 0xFF && self.ip[3] == 0xFF &&
             self.ip[4] == 0xFF && self.ip[5] == 0xFF &&

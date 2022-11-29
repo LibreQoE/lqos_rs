@@ -57,8 +57,8 @@ int xdp_prog(struct xdp_md *ctx)
             counter->download_bytes += ctx->data_end - ctx->data;
         } else {
             // Upload
-            counter->download_packets += 1;
-            counter->download_bytes += ctx->data_end - ctx->data;
+            counter->upload_packets += 1;
+            counter->upload_bytes += ctx->data_end - ctx->data;
         }
     } else {
         struct host_counter new_host = {0};
@@ -69,7 +69,6 @@ int xdp_prog(struct xdp_md *ctx)
             new_host.upload_packets = 1;
             new_host.upload_bytes = ctx->data_end - ctx->data;
         }
-        struct in6_addr key = (direction == 1) ? dissector.dst_ip : dissector.src_ip;
         if (bpf_map_update_elem(&map_traffic, &key, &new_host, BPF_NOEXIST) != 0) {
             bpf_debug("Failed to insert flow");
         }
