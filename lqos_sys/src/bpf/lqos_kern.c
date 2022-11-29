@@ -32,16 +32,16 @@ int xdp_prog(struct xdp_md *ctx)
 
     // Determine the lookup key by direction
     struct ip_hash_key lookup_key;
-    lookup_key.prefixlen = 128;
-    lookup_key.address = (direction == 1) ? dissector.dst_ip : dissector.src_ip;
+    struct ip_hash_info * ip_info = setup_lookup_key_and_tc_cpu(direction, &lookup_key, &dissector);
+
     __u32 tc_handle = 0;
     __u32 cpu = 0;
-    struct ip_hash_info * ip_info = bpf_map_lookup_elem(&map_ip_to_cpu_and_tc, &lookup_key);
     if (ip_info) {
         tc_handle = ip_info->tc_handle;
         cpu = ip_info->cpu;
     }
     track_traffic(direction, &lookup_key.address, ctx->data_end - ctx->data, tc_handle);
+    bpf_debug("%d", cpu); // Temp
 
     //bpf_debug("We've got IP. Src: %u. Dst: %u", dissector.src_ip.in6_u.u6_addr32[3], dissector.dst_ip.in6_u.u6_addr32[3]);
 	return XDP_PASS;

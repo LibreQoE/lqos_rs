@@ -14,7 +14,7 @@ fn main() -> anyhow::Result<()> {
         let _ = throughput.tick(); // Ignoring errors
         let bps = throughput.bits_per_second();
         let packets = throughput.packets_per_second();
-        if throughput.cycle > 0 {
+        if throughput.cycle > 1 {
             println!("🠗 {} bits/second ({} packets), {} 🠕 bits/second ({} packets)", bps.0, packets.0, bps.1, packets.1);
         }
     }

@@ -10,6 +10,7 @@
 #include <linux/ipv6.h>
 #include "maximums.h"
 #include "debug.h"
+#include "dissector.h"
 
 // Data structure used for map_ip_hash
 struct ip_hash_info {
@@ -32,3 +33,15 @@ struct {
 	__uint(pinning, LIBBPF_PIN_BY_NAME);
 	__uint(map_flags, BPF_F_NO_PREALLOC);
 } map_ip_to_cpu_and_tc SEC(".maps");
+
+static __always_inline struct ip_hash_info * setup_lookup_key_and_tc_cpu(
+    int direction, 
+    struct ip_hash_key * lookup_key, 
+    struct dissector_t * dissector
+) 
+{
+    lookup_key->prefixlen = 128;
+    lookup_key->address = (direction == 1) ? dissector->dst_ip : dissector->src_ip;
+    struct ip_hash_info * ip_info = bpf_map_lookup_elem(&map_ip_to_cpu_and_tc, lookup_key);
+    return ip_info;
+}
