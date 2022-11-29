@@ -81,6 +81,7 @@ unsafe fn load_kernel(skeleton: *mut bpf::lqos_kern) -> Result<()> {
     }
 }
 
+#[derive(PartialEq, Eq)]
 pub enum InterfaceDirection {
     Internet,
     IspNetwork,
@@ -111,9 +112,11 @@ pub fn attach_xdp_to_interface(interface_name: &str, direction: InterfaceDirecti
         }
     }
 
-    // Configure CPU Maps
-    let cpu_map = CpuMapping::new()?;
-    cpu_map.mark_cpus_available()?;
+    // Configure CPU Maps - only do this for the Internet direction
+    if direction == InterfaceDirection::Internet {
+        let cpu_map = CpuMapping::new()?;
+        cpu_map.mark_cpus_available()?;
+    }
 
     Ok(())
 }

@@ -36,6 +36,7 @@ impl CpuMapping {
         let queue_size = 2048u32;
         let val_ptr : *const u32 = &queue_size;
         for cpu in 0 .. cpu_count {
+            println!("Mapping core #{cpu}");
             // Insert into the cpu map
             let cpu_ptr : *const u32 = &cpu;
             let error = unsafe {
