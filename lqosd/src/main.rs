@@ -9,7 +9,7 @@ fn main() -> anyhow::Result<()> {
     let _kernels = LibreQoSKernels::new(&config.internet_interface, &config.isp_interface)?;
     let mut throughput = throughput_tracker::ThroughputTracker::new();
 
-    add_ip_to_tc("100.64.1.2/32", (1, 12), 1)?;
+    add_ip_to_tc("100.64.1.2/32", (1, 12), 2)?;
 
     loop {
         std::thread::sleep(Duration::from_secs(1));

@@ -44,7 +44,20 @@ int xdp_prog(struct xdp_md *ctx)
     track_traffic(direction, &lookup_key.address, ctx->data_end - ctx->data, tc_handle);
     bpf_debug("%d", cpu); // Temp
 
-    //bpf_debug("We've got IP. Src: %u. Dst: %u", dissector.src_ip.in6_u.u6_addr32[3], dissector.dst_ip.in6_u.u6_addr32[3]);
+    if (tc_handle != 0) {
+        // Handle CPU redirection if there is one specified
+        __u32 *cpu_lookup;
+        cpu_lookup = bpf_map_lookup_elem(&cpus_available, &cpu);
+        if (!cpu_lookup) {
+            bpf_debug("Error: CPU %u is not mapped", cpu);
+            return XDP_PASS; // No CPU found
+        }
+        __u32 cpu_dest = *cpu_lookup;
+
+        // Redirect based on CPU
+        //bpf_debug("Zooming to CPU: %u", cpu_dest);
+        return bpf_redirect_map(&cpu_map, cpu_dest, 0); 
+    }
 	return XDP_PASS;
 }
 
