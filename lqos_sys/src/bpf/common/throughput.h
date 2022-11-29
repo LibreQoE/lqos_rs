@@ -29,7 +29,6 @@ static __always_inline void track_traffic(int direction, struct in6_addr * key, 
     // Count the bits. It's per-CPU, so we can't be interrupted - no sync required
     struct host_counter * counter = (struct host_counter *)bpf_map_lookup_elem(&map_traffic, key);
     if (counter) {
-        bpf_debug("Hit map");
         if (direction == 1) {
             // Download
             counter->download_packets += 1;

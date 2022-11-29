@@ -42,7 +42,6 @@ int xdp_prog(struct xdp_md *ctx)
         cpu = ip_info->cpu;
     }
     track_traffic(direction, &lookup_key.address, ctx->data_end - ctx->data, tc_handle);
-    bpf_debug("%d", cpu); // Temp
 
     if (tc_handle != 0) {
         // Handle CPU redirection if there is one specified
