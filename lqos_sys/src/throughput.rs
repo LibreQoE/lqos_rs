@@ -28,7 +28,7 @@ impl Default for HostCounter {
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct XdpIpAddress {
-    ip: [u8; 16],
+    pub ip: [u8; 16],
 }
 
 impl Default for XdpIpAddress {
@@ -38,6 +38,27 @@ impl Default for XdpIpAddress {
 }
 
 impl XdpIpAddress {
+    pub fn from_ip(ip: IpAddr) -> Self {
+        let mut result = Self::default();
+        match ip {
+            IpAddr::V4(ip) => {
+                result.ip[12] = ip.octets()[0];
+                result.ip[13] = ip.octets()[1];
+                result.ip[14] = ip.octets()[2];
+                result.ip[15] = ip.octets()[3];
+            }
+            IpAddr::V6(ip) => {
+                for i in 0..8 {
+                    let base = i * 2;
+                    result.ip[base+1] =  ip.octets()[base];
+                    result.ip[base] =  ip.octets()[base+1];
+                }
+            }
+        }
+
+        result
+    }
+
     pub fn as_ip(&self) -> IpAddr {
         if self.ip[0] == 0xFF && self.ip[1] == 0xFF &&
             self.ip[2] == 0xFF && self.ip[3] == 0xFF &&

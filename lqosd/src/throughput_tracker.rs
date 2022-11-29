@@ -47,6 +47,9 @@ impl ThroughputTracker {
                         entry.bytes.1 += c.upload_bytes;
                         entry.packets.0 += c.download_packets;
                         entry.packets.1 += c.upload_packets;
+                        if c.tc_handle != 0 {
+                            entry.tc_handle = c.tc_handle;
+                        }
                     };
                 } else {
                     let mut entry = ThroughputEntry {
@@ -57,12 +60,16 @@ impl ThroughputTracker {
                         prev_packets: (0, 0),
                         bytes_per_second: (0, 0),
                         packets_per_second: (0, 0),
+                        tc_handle: 0,
                     };
                     for c in counts {
                         entry.bytes.0 += c.download_bytes;
                         entry.bytes.1 += c.upload_bytes;
                         entry.packets.0 += c.download_packets;
                         entry.packets.1 += c.upload_packets;
+                        if c.tc_handle != 0 {
+                            entry.tc_handle = c.tc_handle;
+                        }
                     };
                     self.raw_data.insert(*xdp_ip, entry);
                 }
@@ -98,6 +105,13 @@ impl ThroughputTracker {
     pub fn packets_per_second(&self) -> (u64, u64) {
         self.packets_per_second
     }
+
+    pub fn dump(&self) {
+        for (k,v) in self.raw_data.iter() {
+            let ip = k.as_ip();
+            println!("{:<34}{:?}", ip, v.tc_handle);
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -109,4 +123,5 @@ struct ThroughputEntry {
     prev_packets: (u64, u64),
     bytes_per_second: (u64, u64),
     packets_per_second: (u64, u64),
+    tc_handle: u32,
 }

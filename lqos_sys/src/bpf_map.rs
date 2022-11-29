@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use std::{ffi::{CString, c_void}, marker::PhantomData, ptr::null_mut};
 use anyhow::{Result, Error};
-use libbpf_sys::{bpf_obj_get, bpf_map_get_next_key, bpf_map_lookup_elem};
+use libbpf_sys::{bpf_obj_get, bpf_map_get_next_key, bpf_map_lookup_elem, bpf_map_update_elem, BPF_NOEXIST};
 
 pub struct BpfMap<K, V> {
     fd: i32,
@@ -32,6 +32,19 @@ where K:Default+Clone, V:Default+Clone
 
     pub fn iter(&self) -> BpfMapIterator<K,V> {
         BpfMapIterator::new(self.fd)
+    }
+
+    pub fn insert(&mut self, key: &mut K, value: &mut V) -> Result<()> {
+        let key_ptr : *mut K = key;
+        let val_ptr : *mut V = value;
+        let err = unsafe {
+            bpf_map_update_elem(self.fd, key_ptr as *mut c_void, val_ptr as *mut c_void, BPF_NOEXIST.into())
+        };
+        if err != 0 {
+            Err(Error::msg("Unable to insert into map"))
+        } else {
+            Ok(())
+        }
     }
 }
 
