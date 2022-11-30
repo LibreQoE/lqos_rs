@@ -14,4 +14,6 @@ members = [
     "lqos_sys", # System support for handling the XDP component
     "lqos_config", # Configuration support
     "lqosd", # LibreQoS Daemon
+    "lqos_bus", # Bus data types
+    "lqtop", # A command line utility to show current activity
 ]

@@ -38,10 +38,12 @@ pub fn interface_name_to_index(interface_name: &str) -> Result<u32> {
 }
 
 pub fn unload_xdp_from_interface(interface_name: &str) -> Result<()> {
+    println!("Unloading XDP/TC");
     check_root()?;
+    let interface_index = interface_name_to_index(interface_name)?.try_into()?;
     unsafe {
         let err = bpf_xdp_attach(
-            interface_name_to_index(interface_name)?.try_into()?,
+            interface_index,
             -1,
             1 << 0,
             std::ptr::null(),
@@ -49,6 +51,9 @@ pub fn unload_xdp_from_interface(interface_name: &str) -> Result<()> {
         if err != 0 {
             return Err(Error::msg("Unable to unload from interface."));
         }
+
+        let interface_c = CString::new(interface_name)?;
+        let _ = bpf::tc_detach_egress(interface_index as i32, true, true, interface_c.as_ptr());
     }
     Ok(())
 }

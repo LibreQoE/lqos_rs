@@ -1,6 +1,63 @@
 use anyhow::Result;
+use lqos_bus::BusResponse;
 use lqos_sys::{get_throughput_map, XdpIpAddress};
-use std::collections::HashMap;
+use tokio::{task, time};
+use std::{collections::HashMap, time::Duration};
+use lazy_static::*;
+use parking_lot::RwLock;
+
+lazy_static! {
+    static ref THROUGHPUT_TRACKER : RwLock<ThroughputTracker> = RwLock::new(ThroughputTracker::new());
+}
+
+pub async fn spawn_throughput_monitor() {
+    let _ = task::spawn(async {
+        let mut interval = time::interval(Duration::from_secs(1));
+
+        loop {
+            let _ = task::spawn_blocking(move || {
+                let mut thoughput = THROUGHPUT_TRACKER.write();
+                let _ = thoughput.tick();
+            }).await;
+            interval.tick().await;
+        }
+    });
+}
+
+pub fn current_throughput() -> BusResponse {
+    let (bits_per_second, packets_per_second) = {
+        let tp = THROUGHPUT_TRACKER.read();
+        (tp.bits_per_second(), tp.packets_per_second())
+    };
+    BusResponse::CurrentThroughput { bits_per_second, packets_per_second }
+}
+
+pub fn top_n(n: u32) -> BusResponse {
+    let mut full_list : Vec<(XdpIpAddress, (u64, u64), (u64, u64))> = {
+        let tp = THROUGHPUT_TRACKER.read();
+        tp.raw_data.iter().map(|(ip, te)| {
+            (
+                *ip,
+                te.bytes_per_second,
+                te.packets_per_second
+            )
+        }).collect()
+    };
+    full_list.sort_by(|a,b| {
+        b.1.0.cmp(&a.1.0)
+    });
+    let result = full_list
+        .iter()
+        .take(n as usize)
+        .map(|(ip, (bytes_dn, bytes_up), (packets_dn, packets_up ))| {
+        (
+            ip.as_ip().to_string(),
+            (bytes_dn * 8, bytes_up * 8),
+            (*packets_dn, *packets_up)
+        )
+    }).collect();
+    BusResponse::TopDownloaders(result)
+}
 
 pub struct ThroughputTracker {
     pub cycle: u64,
