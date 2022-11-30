@@ -1,4 +1,4 @@
-use crate::lqos_kernel::{attach_xdp_to_interface, InterfaceDirection, unload_xdp_from_interface};
+use crate::lqos_kernel::{attach_xdp_and_tc_to_interface, InterfaceDirection, unload_xdp_from_interface};
 
 pub struct LibreQoSKernels {
     to_internet: String,
@@ -11,8 +11,8 @@ impl LibreQoSKernels {
             to_internet: to_internet.to_string(),
             to_isp: to_isp.to_string()
         };
-        attach_xdp_to_interface(&kernel.to_internet, InterfaceDirection::Internet)?;
-        attach_xdp_to_interface(&kernel.to_isp, InterfaceDirection::IspNetwork)?;
+        attach_xdp_and_tc_to_interface(&kernel.to_internet, InterfaceDirection::Internet)?;
+        attach_xdp_and_tc_to_interface(&kernel.to_isp, InterfaceDirection::IspNetwork)?;
         Ok(kernel)
     }
 }

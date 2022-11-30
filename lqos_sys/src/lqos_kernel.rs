@@ -6,11 +6,10 @@
 use anyhow::{Error, Result};
 use libbpf_sys::{
     bpf_xdp_attach, libbpf_set_strict_mode, LIBBPF_STRICT_ALL,
-    XDP_FLAGS_UPDATE_IF_NOEXIST
+    XDP_FLAGS_UPDATE_IF_NOEXIST,
 };
 use nix::libc::{if_nametoindex, geteuid};
 use std::{ffi::{CString}};
-
 use crate::cpu_map::CpuMapping;
 
 mod bpf {
@@ -87,12 +86,12 @@ pub enum InterfaceDirection {
     IspNetwork,
 }
 
-pub fn attach_xdp_to_interface(interface_name: &str, direction: InterfaceDirection) -> Result<()> {
+pub fn attach_xdp_and_tc_to_interface(interface_name: &str, direction: InterfaceDirection) -> Result<()> {
     check_root()?;
     // Check the interface is valid
     let interface_index = interface_name_to_index(interface_name)?;
     set_strict_mode()?;
-    unsafe {
+    let skeleton = unsafe {
         let skeleton = open_kernel()?;
         (*(*skeleton).data).direction = match direction {
             InterfaceDirection::Internet => 1,
@@ -110,12 +109,28 @@ pub fn attach_xdp_to_interface(interface_name: &str, direction: InterfaceDirecti
         if error != 0 {
             return Err(Error::msg("Unable to attach to interface"));
         }
-    }
+        skeleton
+    };
 
     // Configure CPU Maps - only do this for the Internet direction
     if direction == InterfaceDirection::Internet {
         let cpu_map = CpuMapping::new()?;
         cpu_map.mark_cpus_available()?;
+    }
+
+    // Attach the TC program
+    // extern int tc_attach_egress(int ifindex, bool verbose, struct lqos_kern *obj);
+    // extern int tc_detach_egress(int ifindex, bool verbose, bool flush_hook, char * ifname);
+    let interface_c = CString::new(interface_name)?;
+    let _ = unsafe {
+        bpf::tc_detach_egress(interface_index as i32, true, true, interface_c.as_ptr())
+    }; // Ignoring error, because it's ok to not have something to detach
+
+    let error = unsafe {
+        bpf::tc_attach_egress(interface_index as i32, true, skeleton)
+    };
+    if error != 0 {
+        return Err(Error::msg("Unable to attach TC to interface"));
     }
 
     Ok(())

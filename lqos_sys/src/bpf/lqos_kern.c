@@ -6,6 +6,8 @@
 #include <linux/in6.h>
 #include <linux/ip.h>
 #include <linux/ipv6.h>
+#include <linux/pkt_cls.h>
+#include <linux/pkt_sched.h> /* TC_H_MAJ + TC_H_MIN */
 #include "common/debug.h"
 #include "common/dissector.h"
 #include "common/maximums.h"
@@ -58,6 +60,12 @@ int xdp_prog(struct xdp_md *ctx)
         return bpf_redirect_map(&cpu_map, cpu_dest, 0); 
     }
 	return XDP_PASS;
+}
+
+SEC("tc")
+int tc_iphash_to_cpu(struct __sk_buff *skb)
+{
+    return TC_ACT_OK;
 }
 
 char _license[] SEC("license") = "GPL";

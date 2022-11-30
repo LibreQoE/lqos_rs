@@ -1,6 +1,22 @@
 use std::env;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, Output};
+
+fn command_warnings(command_result: &std::io::Result<Output>) {
+    if command_result.is_err() {
+        println!("cargo:warning={:?}", command_result);
+    }
+
+    let r = command_result.as_ref().unwrap().stdout.clone();    
+    if !r.is_empty() {
+        println!("cargo:warning={}", String::from_utf8(r).unwrap());
+    }
+
+    let r = command_result.as_ref().unwrap().stderr.clone();    
+    if !r.is_empty() {
+        panic!("{}", String::from_utf8(r).unwrap());
+    }
+}
 
 fn main() {
     let out_dir = env::var_os("OUT_DIR").unwrap();
@@ -30,13 +46,7 @@ fn main() {
             "lqos_kern.c",
         ])
         .output();
-    if compile_result.is_err() {
-        println!("cargo:warning={:?}", compile_result);
-    }
-    let error_message = compile_result.as_ref().unwrap().stderr.clone();
-    if !error_message.is_empty() {
-        panic!("cargo:warning={}", String::from_utf8(error_message).unwrap());
-    }
+    command_warnings(&compile_result);
 
     // 2: Link the .ll file into a .o file
     // Command line:
@@ -51,9 +61,7 @@ fn main() {
             &build_target,
         ])
         .output();
-    if link_result.is_err() {
-        println!("cargo:warning={:?}", compile_result);
-    }
+    command_warnings(&link_result);
 
     // 3: Use bpftool to build the skeleton file
     // Command line:
@@ -66,12 +74,9 @@ fn main() {
             &link_target,
         ])
         .output();
-    if skel_result.is_err() {
-        println!("cargo:warning={:?}", compile_result);
-    } else {
-        let header_file = String::from_utf8(skel_result.unwrap().stdout).unwrap();
-        std::fs::write(&skel_target, header_file).unwrap();
-    }
+    //command_warnings(&skel_result);
+    let header_file = String::from_utf8(skel_result.unwrap().stdout).unwrap();
+    std::fs::write(&skel_target, header_file).unwrap();
 
     // 4: Copy the wrapper to our out dir
     let wrapper_target = format!("{}/wrapper.h", out_dir.to_str().unwrap());
@@ -92,9 +97,8 @@ fn main() {
             &shrinkwrap_lib
         ])
         .output();
-    if build_result.is_err() {
-        println!("cargo:warning={:?}", compile_result);
-    }
+    command_warnings(&build_result);
+    
     let build_result = Command::new("ar")
     .args([
             "r",
@@ -103,9 +107,7 @@ fn main() {
             "/usr/lib/x86_64-linux-gnu/libbpf.a",
         ])
         .output();
-    if build_result.is_err() {
-        println!("cargo:warning={:?}", compile_result);
-    }
+    command_warnings(&build_result);
 
     println!("cargo:rustc-link-search=native={}", out_dir.to_str().unwrap());
     println!("cargo:rustc-link-lib=static=shrinkwrap");
