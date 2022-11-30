@@ -163,6 +163,7 @@ impl ThroughputTracker {
         self.packets_per_second
     }
 
+    #[allow(dead_code)]
     pub fn dump(&self) {
         for (k,v) in self.raw_data.iter() {
             let ip = k.as_ip();

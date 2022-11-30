@@ -1,9 +1,9 @@
-use anyhow::{Error, Result};
+use anyhow::Result;
 use crossterm::{event::KeyCode, terminal::enable_raw_mode};
 use lqos_bus::{
     decode_response, encode_request, BusRequest, BusResponse, BusSession, BUS_BIND_ADDRESS,
 };
-use std::{io, time::Duration, process::exit};
+use std::{io, time::Duration};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
@@ -11,10 +11,9 @@ use tokio::{
 use tui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
-    style::{Color, Modifier, Style},
-    symbols,
+    style::{Color, Style},
     text::{Span, Spans},
-    widgets::{Axis, Block, BorderType, Borders, Chart, Dataset, Paragraph, Table, Cell, Row},
+    widgets::{Block, BorderType, Borders, Paragraph, Table, Cell, Row},
     Terminal,
 };
 
