@@ -11,6 +11,7 @@
 #include "maximums.h"
 #include "debug.h"
 #include "dissector.h"
+#include "dissector_tc.h"
 
 // Data structure used for map_ip_hash
 struct ip_hash_info {
@@ -42,6 +43,19 @@ static __always_inline struct ip_hash_info * setup_lookup_key_and_tc_cpu(
 {
     lookup_key->prefixlen = 128;
     lookup_key->address = (direction == 1) ? dissector->dst_ip : dissector->src_ip;
+    struct ip_hash_info * ip_info = bpf_map_lookup_elem(&map_ip_to_cpu_and_tc, lookup_key);
+    return ip_info;
+}
+
+static __always_inline struct ip_hash_info * tc_setup_lookup_key_and_tc_cpu(
+    int direction, 
+    struct ip_hash_key * lookup_key, 
+    struct tc_dissector_t * dissector
+) 
+{
+    lookup_key->prefixlen = 128;
+	// Direction is reversed because we are operating on egress
+    lookup_key->address = (direction == 1) ? dissector->src_ip : dissector->dst_ip;
     struct ip_hash_info * ip_info = bpf_map_lookup_elem(&map_ip_to_cpu_and_tc, lookup_key);
     return ip_info;
 }

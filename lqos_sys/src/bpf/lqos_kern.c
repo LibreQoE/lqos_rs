@@ -10,6 +10,7 @@
 #include <linux/pkt_sched.h> /* TC_H_MAJ + TC_H_MIN */
 #include "common/debug.h"
 #include "common/dissector.h"
+#include "common/dissector_tc.h"
 #include "common/maximums.h"
 #include "common/throughput.h"
 #include "common/lpm.h"
@@ -65,6 +66,35 @@ int xdp_prog(struct xdp_md *ctx)
 SEC("tc")
 int tc_iphash_to_cpu(struct __sk_buff *skb)
 {
+    if (direction == 255) {
+        bpf_debug("Error: interface direction unspecified, aborting.");
+        return TC_ACT_OK;
+    }
+
+    // Remove me
+    __u32 cpu = bpf_get_smp_processor_id();
+    bpf_debug("TC egress fired on CPU %u", cpu);
+
+    // TODO: Support XDP Metadata shunt
+    // In the meantime, we'll do it the hard way:
+    struct tc_dissector_t dissector = {0};
+    if (!tc_dissector_new(skb, &dissector)) return TC_ACT_OK;
+    if (!tc_dissector_find_l3_offset(&dissector)) return TC_ACT_OK;
+    if (!tc_dissector_find_ip_header(&dissector)) return TC_ACT_OK;
+
+    // Determine the lookup key by direction
+    struct ip_hash_key lookup_key;
+    struct ip_hash_info * ip_info = tc_setup_lookup_key_and_tc_cpu(direction, &lookup_key, &dissector);
+
+    if (ip_info && ip_info->tc_handle != 0) {
+        // We found a matching mapped TC flow
+        bpf_debug("Mapped to TC handle %u", ip_info->tc_handle);
+        skb->priority = ip_info->tc_handle;
+    } else {
+        // We didn't find anything
+        return TC_ACT_OK;
+    }
+
     return TC_ACT_OK;
 }
 
