@@ -15,6 +15,7 @@
 #include "common/throughput.h"
 #include "common/lpm.h"
 #include "common/cpu_map.h"
+#include "common/tcp_rtt.h"
 
 // Constant passed in during loading to either
 // 1 (facing the Internet)
@@ -45,6 +46,7 @@ int xdp_prog(struct xdp_md *ctx)
         cpu = ip_info->cpu;
     }
     track_traffic(direction, &lookup_key.address, ctx->data_end - ctx->data, tc_handle);
+    //xdp_pping_start(&dissector, &lookup_key, tc_handle);
 
     if (tc_handle != 0) {
         // Handle CPU redirection if there is one specified

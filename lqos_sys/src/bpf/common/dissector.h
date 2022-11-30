@@ -14,6 +14,7 @@ struct dissector_t
     struct xdp_md *ctx;
     void *start;
     void *end;
+    __u32 skb_len;
     struct ethhdr *ethernet_header;
     __u16 eth_type;
     __u32 l3offset;
@@ -55,6 +56,7 @@ static __always_inline bool dissector_new(struct xdp_md *ctx, struct dissector_t
     dissector->end = (void *)(long)ctx->data_end;
     dissector->ethernet_header = (struct ethhdr *)NULL;
     dissector->l3offset = 0;
+    dissector->skb_len = dissector->end - dissector->start;
 
     // Check that there's room for an ethernet header
     if SKB_OVERFLOW (dissector->start, dissector->end, ethhdr)

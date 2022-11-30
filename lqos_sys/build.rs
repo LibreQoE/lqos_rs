@@ -18,6 +18,17 @@ fn command_warnings(command_result: &std::io::Result<Output>) {
     }
 }
 
+fn command_warnings_errors_only(command_result: &std::io::Result<Output>) {
+    if command_result.is_err() {
+        println!("cargo:warning={:?}", command_result);
+    }
+
+    let r = command_result.as_ref().unwrap().stderr.clone();    
+    if !r.is_empty() {
+        panic!("{}", String::from_utf8(r).unwrap());
+    }
+}
+
 fn main() {
     let out_dir = env::var_os("OUT_DIR").unwrap();
 
@@ -74,7 +85,7 @@ fn main() {
             &link_target,
         ])
         .output();
-    //command_warnings(&skel_result);
+    command_warnings_errors_only(&skel_result);
     let header_file = String::from_utf8(skel_result.unwrap().stdout).unwrap();
     std::fs::write(&skel_target, header_file).unwrap();
 
