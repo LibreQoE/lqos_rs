@@ -5,6 +5,10 @@ edition = "2021"
 
 [dependencies]
 
+[profile.release]
+strip = "debuginfo"
+lto = "thin"
+
 [workspace]
 members = [
     "lqos_sys", # System support for handling the XDP component
