@@ -99,7 +99,7 @@ fn main() {
         .output();
     command_warnings(&build_result);
     
-    let build_result = Command::new("ar")
+    let _build_result = Command::new("ar")
     .args([
             "r",
             &shrinkwrap_a,
@@ -107,7 +107,7 @@ fn main() {
             "/usr/lib/x86_64-linux-gnu/libbpf.a",
         ])
         .output();
-    command_warnings(&build_result);
+    //command_warnings(&build_result);
 
     println!("cargo:rustc-link-search=native={}", out_dir.to_str().unwrap());
     println!("cargo:rustc-link-lib=static=shrinkwrap");
