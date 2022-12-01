@@ -1,5 +1,7 @@
+mod ip_stats;
 use serde::{Deserialize, Serialize};
 use anyhow::Result;
+pub use ip_stats::IpStats;
 
 pub const BUS_BIND_ADDRESS : &str = "127.0.0.1:9999";
 
@@ -26,7 +28,7 @@ pub struct BusReply {
 pub enum BusResponse {
     Ack, // Yes, we're alive
     CurrentThroughput{ bits_per_second: (u64, u64), packets_per_second: (u64, u64) },
-    TopDownloaders(Vec<(String, (u64, u64), (u64, u64), f32)>), // Clean this: (bits)(packets)(latency)
+    TopDownloaders(Vec<IpStats>), // Clean this: (bits)(packets)(latency)
 }
 
 pub fn encode_request(request: &BusSession) -> Result<Vec<u8>> {

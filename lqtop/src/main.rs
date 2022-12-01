@@ -1,7 +1,7 @@
 use anyhow::Result;
 use crossterm::{event::KeyCode, terminal::enable_raw_mode};
 use lqos_bus::{
-    decode_response, encode_request, BusRequest, BusResponse, BusSession, BUS_BIND_ADDRESS,
+    decode_response, encode_request, BusRequest, BusResponse, BusSession, BUS_BIND_ADDRESS, IpStats,
 };
 use std::{io, time::Duration};
 use tokio::{
@@ -19,7 +19,7 @@ use tui::{
 
 struct DataResult {
     totals: (u64, u64, u64, u64),
-    top: Vec<(String, (u64, u64), (u64, u64), f32)>,
+    top: Vec<IpStats>,
 }
 
 async fn get_data() -> Result<DataResult> {
@@ -118,16 +118,16 @@ fn draw_pps<'a>(packets_per_second: (u64, u64), bits_per_second: (u64, u64)) -> 
     text
 }
 
-fn draw_top_pane<'a>(packets_per_second: (u64, u64), bits_per_second: (u64, u64), top: &[(String, (u64, u64), (u64, u64), f32)]) -> Table<'a> {
-    let rows : Vec<Row> = top.iter().map(|(ip, (bits_d, bits_u), (packets_d, packets_u), rtt)| {
+fn draw_top_pane<'a>(top: &[IpStats], packets_per_second: (u64, u64), bits_per_second: (u64, u64)) -> Table<'a> {
+    let rows : Vec<Row> = top.iter().map(|stats| {
         Row::new(
             vec![
-                Cell::from(ip.clone()),
-                Cell::from(format!("🠗 {}",scale_bits(*bits_d))),
-                Cell::from(format!("🠕 {}", scale_bits(*bits_u))),
-                Cell::from(format!("🠗 {}", scale_packets(*packets_d))),
-                Cell::from(format!("🠕 {}", scale_packets(*packets_u))),
-                Cell::from(format!("{:.2} ms", *rtt)),
+                Cell::from(stats.ip_address.clone()),
+                Cell::from(format!("🠗 {}",scale_bits(stats.bits_per_second.0))),
+                Cell::from(format!("🠕 {}", scale_bits(stats.bits_per_second.1))),
+                Cell::from(format!("🠗 {}", scale_packets(stats.packets_per_second.0))),
+                Cell::from(format!("🠕 {}", scale_packets(stats.packets_per_second.1))),
+                Cell::from(format!("{:.2} ms", stats.median_tcp_rtt)),
             ]
         )
     }).collect();
@@ -186,7 +186,7 @@ pub async fn main() -> Result<()> {
                 .split(f.size());
             f.render_widget(draw_menu(), chunks[0]);
 
-            f.render_widget(draw_top_pane(packets, bits, &top), chunks[1]);
+            f.render_widget(draw_top_pane(&top, packets, bits), chunks[1]);
             //f.render_widget(bandwidth_chart(datasets.clone(), packets, bits, min, max), chunks[1]);
         })?;
 

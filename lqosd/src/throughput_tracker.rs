@@ -1,5 +1,5 @@
 use anyhow::Result;
-use lqos_bus::BusResponse;
+use lqos_bus::{BusResponse, IpStats};
 use lqos_sys::{get_throughput_map, XdpIpAddress};
 use tokio::{task, time};
 use std::{collections::HashMap, time::Duration};
@@ -51,12 +51,12 @@ pub fn top_n(n: u32) -> BusResponse {
         .iter()
         .take(n as usize)
         .map(|(ip, (bytes_dn, bytes_up), (packets_dn, packets_up ), median_rtt)| {
-        (
-            ip.as_ip().to_string(),
-            (bytes_dn * 8, bytes_up * 8),
-            (*packets_dn, *packets_up),
-            *median_rtt
-        )
+            IpStats {
+                ip_address: ip.as_ip().to_string(),
+                bits_per_second: (bytes_dn * 8, bytes_up * 8),
+                packets_per_second: (*packets_dn, *packets_up),
+                median_tcp_rtt: *median_rtt
+            }
     }).collect();
     BusResponse::TopDownloaders(result)
 }
