@@ -46,8 +46,8 @@ int xdp_prog(struct xdp_md *ctx)
         cpu = ip_info->cpu;
     }
     track_traffic(direction, &lookup_key.address, ctx->data_end - ctx->data, tc_handle);
-    //xdp_pping_start(&dissector, &lookup_key, tc_handle);
 
+    // Send on its way
     if (tc_handle != 0) {
         // Handle CPU redirection if there is one specified
         __u32 *cpu_lookup;
@@ -87,6 +87,23 @@ int tc_iphash_to_cpu(struct __sk_buff *skb)
     // Determine the lookup key by direction
     struct ip_hash_key lookup_key;
     struct ip_hash_info * ip_info = tc_setup_lookup_key_and_tc_cpu(direction, &lookup_key, &dissector);
+
+    __u32 tc_handle = 0;
+    if (ip_info) tc_handle = ip_info->tc_handle;
+
+    // Temporary pping integration - needs a lot of cleaning
+    struct parsing_context context = {0};
+    context.now = bpf_ktime_get_ns();
+    context.data = (void *)(long)skb->data;
+    context.data_end = (void *)(long)skb->data_end;
+    context.ip_header = dissector.ip_header;
+    context.l3_offset = dissector.l3offset;
+    context.now = 0;
+    context.protocol = dissector.eth_type;
+    context.skb_len = skb->len;
+    context.tc_handle = tc_handle;
+    context.tcp = NULL;
+    tc_pping_start(&context);
 
     if (ip_info && ip_info->tc_handle != 0) {
         // We found a matching mapped TC flow

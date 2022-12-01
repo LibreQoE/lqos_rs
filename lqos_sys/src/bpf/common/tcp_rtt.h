@@ -2,14 +2,21 @@
 /*
 Based on the GPLv2 xdp-pping project 
 (https://github.com/xdp-project/bpf-examples/tree/master/pping)
+
 xdp_pping is based on the ideas in Dr. Kathleen Nichols' pping
 utility: https://github.com/pollere/pping
    and the papers around "Listening to Networks":
 http://www.pollere.net/Pdfdocs/ListeningGoog.pdf
+
 My modifications are Copyright 2022, Herbert Wolverson
 (Bracket Productions)
 */
-
+/* Shared structures between userspace and kernel space
+ */
+ 
+/* Implementation of pping inside the kernel
+ * classifier
+ */
 #pragma once
 
 #include <linux/bpf.h>
@@ -23,78 +30,35 @@ My modifications are Copyright 2022, Herbert Wolverson
 #include <linux/tcp.h>
 #include <bpf/bpf_endian.h>
 #include <stdbool.h>
-//#include "tc_classify_kern_pping_common.h"
+#include "tc_classify_kern_pping_common.h"
 #include "maximums.h"
 #include "debug.h"
 #include "ip_hash.h"
-#include "dissector.h"
 
 #define MAX_MEMCMP_SIZE 128
 
-/* 30 second rotating performance buffer, per-local IP */
-#define MAX_PERF_SECONDS 60
-#define NS_PER_MS 1000000UL
-#define NS_PER_MS_TIMES_100 10000UL
-#define NS_PER_SECOND NS_PER_MS 1000000000UL
-#define NS_PER_30_SECONDS 30000000000UL
+#ifdef INSTRUMENT
+void debug_handle(__u32 handle) {
+    union tc_handle_type tch;
+    tch.handle = handle;
+    bpf_debug("Handle: %u:%u", tch.majmin[1], tch.majmin[0]);
+}
+#endif
 
 struct parsing_context
 {
-    struct dissector_t * dissector;
+    void *data;
+    void *data_end;
+    __u32 l3_offset;
+    union iph_ptr ip_header;
+    __u32 skb_len;
+    __be16 protocol;
     struct tcphdr *tcp;
     __u32 tc_handle;
     __u64 now;
-    struct ip_hash_key * lookup_key;
 };
 
-/*
- * Struct that can hold the source or destination address for a flow (l3+l4).
- * Works for both IPv4 and IPv6, as IPv4 addresses can be mapped to IPv6 ones
- * based on RFC 4291 Section 2.5.5.2.
- */
-struct flow_address
-{
-    struct in6_addr ip;
-    __u16 port;
-    __u16 reserved;
-};
-
-/*
- * Struct to hold a full network tuple
- * The ipv member is technically not necessary, but makes it easier to
- * determine if saddr/daddr are IPv4 or IPv6 address (don't need to look at the
- * first 12 bytes of address). The proto memeber is not currently used, but
- * could be useful once pping is extended to work for other protocols than TCP.
- *
- * Note that I've removed proto, ipv and reserved.
- */
-struct network_tuple
-{
-    struct flow_address saddr;
-    struct flow_address daddr;
-    __u16 proto; // IPPROTO_TCP, IPPROTO_ICMP, QUIC etc
-    __u8 ipv;    // AF_INET or AF_INET6
-    __u8 reserved;
-};
-
-/* Packet identifier */
-struct packet_id
-{
-    struct network_tuple flow;
-    __u32 identifier;
-};
-
-/* Ring-buffer of performance readings for each IP */
-struct rotating_performance
-{
-    __u32 tc_handle;
-    __u32 rtt[MAX_PERF_SECONDS];
-    __u32 next_entry;
-    __u64 recycle_time;
-    __u32 has_fresh_data;
-};
-
-/* Event type recorded for a packet flow */
+// Event type recorded for a packet flow
 enum __attribute__((__packed__)) flow_event_type
 {
     FLOW_EVENT_NONE,
@@ -120,29 +84,29 @@ struct flow_state
     __u8 reserved[2];
 };
 
-/*
- * Stores flowstate for both direction (src -> dst and dst -> src) of a flow
- *
- * Uses two named members instead of array of size 2 to avoid hassels with
- * convincing verifier that member access is not out of bounds
- */
+
+//  * Stores flowstate for both direction (src -> dst and dst -> src) of a flow
+//  *
+//  * Uses two named members instead of array of size 2 to avoid hassels with
+//  * convincing verifier that member access is not out of bounds
+
 struct dual_flow_state
 {
     struct flow_state dir1;
     struct flow_state dir2;
 };
 
-/*
- * Struct filled in by parse_packet_id.
- *
- * Note: As long as parse_packet_id is successful, the flow-parts of pid
- * and reply_pid should be valid, regardless of value for pid_valid and
- * reply_pid valid. The *pid_valid members are there to indicate that the
- * identifier part of *pid are valid and can be used for timestamping/lookup.
- * The reason for not keeping the flow parts as an entirely separate members
- * is to save some performance by avoid doing a copy for lookup/insertion
- * in the packet_ts map.
- */
+
+//  * Struct filled in by parse_packet_id.
+//  *
+//  * Note: As long as parse_packet_id is successful, the flow-parts of pid
+//  * and reply_pid should be valid, regardless of value for pid_valid and
+//  * reply_pid valid. The *pid_valid members are there to indicate that the
+//  * identifier part of *pid are valid and can be used for timestamping/lookup.
+//  * The reason for not keeping the flow parts as an entirely separate members
+//  * is to save some performance by avoid doing a copy for lookup/insertion
+//  * in the packet_ts map.
+
 struct packet_info
 {
     __u64 time; // Arrival time of packet
@@ -156,9 +120,9 @@ struct packet_info
     enum flow_event_type event_type;     // flow event triggered by packet
 };
 
-/*
- * Struct filled in by protocol id parsers (ex. parse_tcp_identifier)
- */
+
+//  * Struct filled in by protocol id parsers (ex. parse_tcp_identifier)
+
 struct protocol_info
 {
     __u32 pid;
@@ -170,7 +134,7 @@ struct protocol_info
 
 
 
-/* Map Definitions */
+// Map Definitions
 struct
 {
     __uint(type, BPF_MAP_TYPE_LRU_HASH);
@@ -194,7 +158,7 @@ struct
 struct
 {
     __uint(type, BPF_MAP_TYPE_LRU_HASH);
-    __type(key, struct in6_addr); // Keyed to the address
+    __type(key, __u32); // Keyed to the TC handle
     __type(value, struct rotating_performance);
     __uint(max_entries, IP_HASH_ENTRIES_MAX);
     __uint(pinning, LIBBPF_PIN_BY_NAME);
@@ -214,11 +178,9 @@ struct
 
 #define MAX_TCP_OPTIONS 10
 
-/* Functions */
+// Functions
 
-/*
- * Maps an IPv4 address into an IPv6 address according to RFC 4291 sec 2.5.5.2
- */
+// Maps an IPv4 address into an IPv6 address according to RFC 4291 sec 2.5.5.2
 static __always_inline void map_ipv4_to_ipv6(struct in6_addr *ipv6, __be32 ipv4)
 {
     __builtin_memset(&ipv6->in6_u.u6_addr8[0], 0x00, 16);
@@ -228,12 +190,12 @@ static __always_inline void map_ipv4_to_ipv6(struct in6_addr *ipv6, __be32 ipv4)
     //ipv6->in6_u.u6_addr32[3] = ipv4;
 }
 
-/*
- * Convenience function for getting the corresponding reverse flow.
- * PPing needs to keep track of flow in both directions, and sometimes
- * also needs to reverse the flow to report the "correct" (consistent
- * with Kathie's PPing) src and dest address.
- */
+
+//  * Convenience function for getting the corresponding reverse flow.
+//  * PPing needs to keep track of flow in both directions, and sometimes
+//  * also needs to reverse the flow to report the "correct" (consistent
+//  * with Kathie's PPing) src and dest address.
+
 static __always_inline void reverse_flow(struct network_tuple *dest, struct network_tuple *src)
 {
     dest->ipv = src->ipv;
@@ -243,13 +205,13 @@ static __always_inline void reverse_flow(struct network_tuple *dest, struct netw
     dest->reserved = 0;
 }
 
-/*
- * Can't seem to get __builtin_memcmp to work, so hacking my own
- *
- * Based on https://githubhot.com/repo/iovisor/bcc/issues/3559,
- * __builtin_memcmp should work constant size but I still get the "failed to
- * find BTF for extern" error.
- */
+
+//  * Can't seem to get __builtin_memcmp to work, so hacking my own
+//  *
+//  * Based on https://githubhot.com/repo/iovisor/bcc/issues/3559,
+//  * __builtin_memcmp should work constant size but I still get the "failed to
+//  * find BTF for extern" error.
+
 static __always_inline int my_memcmp(const void *s1_, const void *s2_, __u32 size)
 {
     const __u8 *s1 = (const __u8 *)s1_, *s2 = (const __u8 *)s2_;
@@ -279,12 +241,12 @@ static __always_inline struct flow_state *fstate_from_dfkey(struct dual_flow_sta
     return is_dfkey ? &df_state->dir1 : &df_state->dir2;
 }
 
-/*
- * Parses the TSval and TSecr values from the TCP options field. If sucessful
- * the TSval and TSecr values will be stored at tsval and tsecr (in network
- * byte order).
- * Returns 0 if sucessful and -1 on failure
- */
+
+//  * Parses the TSval and TSecr values from the TCP options field. If sucessful
+//  * the TSval and TSecr values will be stored at tsval and tsecr (in network
+//  * byte order).
+//  * Returns 0 if sucessful and -1 on failure
+
 static __always_inline int parse_tcp_ts(struct tcphdr *tcph, void *data_end, __u32 *tsval,
                                         __u32 *tsecr)
 {
@@ -336,27 +298,27 @@ static __always_inline int parse_tcp_ts(struct tcphdr *tcph, void *data_end, __u
     return -1;
 }
 
-/*
- * Attempts to fetch an identifier for TCP packets, based on the TCP timestamp
- * option.
- *
- * Will use the TSval as pid and TSecr as reply_pid, and the TCP source and dest
- * as port numbers.
- *
- * If successful, tcph, sport, dport and proto_info will be set
- * appropriately and 0 will be returned.
- * On failure -1 will be returned (and arguments will not be set).
- */
+
+//  * Attempts to fetch an identifier for TCP packets, based on the TCP timestamp
+//  * option.
+//  *
+//  * Will use the TSval as pid and TSecr as reply_pid, and the TCP source and dest
+//  * as port numbers.
+//  *
+//  * If successful, tcph, sport, dport and proto_info will be set
+//  * appropriately and 0 will be returned.
+//  * On failure -1 will be returned (and arguments will not be set).
+
 static __always_inline int parse_tcp_identifier(struct parsing_context *context,
                                                 __u16 *sport,
                                                 __u16 *dport, struct protocol_info *proto_info)
 {
-    if (parse_tcp_ts(context->tcp, context->dissector->end, &proto_info->pid, &proto_info->reply_pid) < 0)
+    if (parse_tcp_ts(context->tcp, context->data_end, &proto_info->pid, &proto_info->reply_pid) < 0)
         return -1; // Possible TODO, fall back on seq/ack instead
 
     // Do not timestamp pure ACKs (no payload)
     void *nh_pos = (context->tcp + 1) + (context->tcp->doff << 2);
-    proto_info->pid_valid = nh_pos - context->dissector->start < context->dissector->skb_len || context->tcp->syn;
+    proto_info->pid_valid = nh_pos - context->data < context->skb_len || context->tcp->syn;
 
     // Do not match on non-ACKs (TSecr not valid)
     proto_info->reply_pid_valid = context->tcp->ack;
@@ -385,21 +347,21 @@ static __always_inline int parse_tcp_identifier(struct parsing_context *context,
     return 0;
 }
 
-/* This is a bit of a hackjob from the original */
+// This is a bit of a hackjob from the original
 static __always_inline int parse_packet_identifier(struct parsing_context *context, struct packet_info *p_info)
 {
     p_info->time = context->now;
-    if (context->dissector->eth_type == ETH_P_IP)
+    if (context->protocol == ETH_P_IP)
     {
         p_info->pid.flow.ipv = AF_INET;
-        map_ipv4_to_ipv6(&p_info->pid.flow.saddr.ip, context->dissector->ip_header.iph->saddr);
-        map_ipv4_to_ipv6(&p_info->pid.flow.daddr.ip, context->dissector->ip_header.iph->daddr);
+        map_ipv4_to_ipv6(&p_info->pid.flow.saddr.ip, context->ip_header.iph->saddr);
+        map_ipv4_to_ipv6(&p_info->pid.flow.daddr.ip, context->ip_header.iph->daddr);
     }
-    else if (context->dissector->eth_type == ETH_P_IPV6)
+    else if (context->protocol == ETH_P_IPV6)
     {
         p_info->pid.flow.ipv = AF_INET6;
-        __builtin_memcpy(&p_info->pid.flow.saddr.ip, &context->dissector->ip_header.ip6h->saddr, sizeof(struct in6_addr));
-        __builtin_memcpy(&p_info->pid.flow.daddr.ip, &context->dissector->ip_header.ip6h->daddr, sizeof(struct in6_addr));
+        __builtin_memcpy(&p_info->pid.flow.saddr.ip, &context->ip_header.ip6h->saddr, sizeof(struct in6_addr));
+        __builtin_memcpy(&p_info->pid.flow.daddr.ip, &context->ip_header.ip6h->daddr, sizeof(struct in6_addr));
     }
     else
     {
@@ -440,10 +402,10 @@ get_dualflow_key_from_packet(struct packet_info *p_info)
     return p_info->pid_flow_is_dfkey ? &p_info->pid.flow : &p_info->reply_pid.flow;
 }
 
-/*
- * Initilizes an "empty" flow state based on the forward direction of the
- * current packet
- */
+
+//  * Initilizes an "empty" flow state based on the forward direction of the
+//  * current packet
+
 static __always_inline void init_flowstate(struct flow_state *f_state,
                                            struct packet_info *p_info)
 {
@@ -470,10 +432,10 @@ get_reverse_flowstate_from_packet(struct dual_flow_state *df_state,
     return fstate_from_dfkey(df_state, !p_info->pid_flow_is_dfkey);
 }
 
-/*
- * Initilize a new (assumed 0-initlized) dual flow state based on the current
- * packet.
- */
+
+//  * Initilize a new (assumed 0-initlized) dual flow state based on the current
+//  * packet.
+
 static __always_inline void init_dualflow_state(struct dual_flow_state *df_state,
                                                 struct packet_info *p_info)
 {
@@ -568,10 +530,10 @@ static __always_inline void update_reverse_flowstate(void *ctx, struct packet_in
 static __always_inline bool is_new_identifier(struct packet_id *pid, struct flow_state *f_state)
 {
     if (pid->flow.proto == IPPROTO_TCP)
-        /* TCP timestamps should be monotonically non-decreasing
-         * Check that pid > last_ts (considering wrap around) by
-         * checking 0 < pid - last_ts < 2^31 as specified by
-         * RFC7323 Section 5.2*/
+        // TCP timestamps should be monotonically non-decreasing
+        //  * Check that pid > last_ts (considering wrap around) by
+        //  * checking 0 < pid - last_ts < 2^31 as specified by
+        //  * RFC7323 Section 5.2
         return pid->identifier - f_state->last_id > 0 &&
                pid->identifier - f_state->last_id < 1UL << 31;
 
@@ -588,9 +550,9 @@ static __always_inline bool is_rate_limited(__u64 now, __u64 last_ts)
     return false; // Max firehose drinking speed
 }
 
-/*
- * Attempt to create a timestamp-entry for packet p_info for flow in f_state
- */
+
+//  * Attempt to create a timestamp-entry for packet p_info for flow in f_state
+
 static __always_inline void pping_timestamp_packet(struct flow_state *f_state, void *ctx,
                                                    struct packet_info *p_info, bool new_flow)
 {
@@ -606,12 +568,10 @@ static __always_inline void pping_timestamp_packet(struct flow_state *f_state, v
     if (!new_flow && is_rate_limited(p_info->time, f_state->last_timestamp))
         return;
 
-    /*
-     * Updates attempt at creating timestamp, even if creation of timestamp
-     * fails (due to map being full). This should make the competition for
-     * the next available map slot somewhat fairer between heavy and sparse
-     * flows.
-     */
+    //  * Updates attempt at creating timestamp, even if creation of timestamp
+    //  * fails (due to map being full). This should make the competition for
+    //  * the next available map slot somewhat fairer between heavy and sparse
+    //  * flows.
     f_state->last_timestamp = p_info->time;
 
     if (bpf_map_update_elem(&packet_ts, &p_info->pid, &p_info->time,
@@ -619,11 +579,9 @@ static __always_inline void pping_timestamp_packet(struct flow_state *f_state, v
         __sync_fetch_and_add(&f_state->outstanding_timestamps, 1);
 }
 
-//struct rotating_performance template_rtt = {0};
 
-/*
- * Attempt to match packet in p_info with a timestamp from flow in f_state
- */
+//  * Attempt to match packet in p_info with a timestamp from flow in f_state
+
 static __always_inline void pping_match_packet(struct flow_state *f_state,
                                                struct packet_info *p_info,
                                                __u32 check_tc_handle)
@@ -649,6 +607,10 @@ static __always_inline void pping_match_packet(struct flow_state *f_state,
     }
 
     // Update the most performance map to include this data
+    #ifdef INSTRUMENT
+    bpf_debug("Adding state");
+    debug_handle(f_state->tc_handle.handle);
+    #endif
     struct rotating_performance *perf = (struct rotating_performance *)bpf_map_lookup_elem(&rtt_tracker, &check_tc_handle);
     if (perf == NULL) return;
     __sync_fetch_and_add(&perf->next_entry, 1);
@@ -683,13 +645,13 @@ static __always_inline void close_and_delete_flows(void *ctx, struct packet_info
     }
 }
 
-/*
- * Contains the actual pping logic that is applied after a packet has been
- * parsed and deemed to contain some valid identifier.
- * Looks up and updates flowstate (in both directions), tries to save a
- * timestamp of the packet, tries to match packet against previous timestamps,
- * calculates RTTs and pushes messages to userspace as appropriate.
- */
+
+//  * Contains the actual pping logic that is applied after a packet has been
+//  * parsed and deemed to contain some valid identifier.
+//  * Looks up and updates flowstate (in both directions), tries to save a
+//  * timestamp of the packet, tries to match packet against previous timestamps,
+//  * calculates RTTs and pushes messages to userspace as appropriate.
+
 static __always_inline void pping_parsed_packet(struct parsing_context *context, struct packet_info *p_info)
 {
     struct dual_flow_state *df_state;
@@ -714,29 +676,26 @@ static __always_inline void pping_parsed_packet(struct parsing_context *context,
     close_and_delete_flows(context, p_info, fw_flow, rev_flow);
 }
 
-/* Entry point for running pping in the xdp context */
-static __always_inline void xdp_pping_start(struct dissector_t *dissector, struct ip_hash_key * lookup_key, __u32 tc_handle)
+// Entry poing for running pping in the tc context
+static __always_inline void tc_pping_start(struct parsing_context *context)
 {
-    // Start by filling some data structures
-    struct parsing_context context;
-    context.dissector = dissector;
-    context.tc_handle = tc_handle;
-    context.now = bpf_ktime_get_ns();
-    context.tcp = NULL; // We don't have one yet
-    context.lookup_key = lookup_key;
-
     // Check to see if we can store perf info. Bail if we've hit the limit.
     // Copying occurs because otherwise the validator complains.
-    struct rotating_performance *perf = (struct rotating_performance *)bpf_map_lookup_elem(&rtt_tracker, &lookup_key->address);
+    context->now = bpf_ktime_get_ns();
+    __u32 active_tc_handle = context->tc_handle;
+    #ifdef INSTRUMENT
+    debug_handle(active_tc_handle);
+    #endif
+    struct rotating_performance *perf = (struct rotating_performance *)bpf_map_lookup_elem(&rtt_tracker, &active_tc_handle);
     if (perf) {
         if (perf->next_entry >= MAX_PERF_SECONDS-1) {
             //bpf_debug("Flow has max samples. Not sampling further until next reset.");
-            if (context.now > perf->recycle_time) {
+            if (context->now > perf->recycle_time) {
                 // If the time-to-live for the sample is exceeded, recycle it to be
                 // usable again.
                 //bpf_debug("Recycling flow, %u > %u", context->now, perf->recycle_time);
                 __builtin_memset(perf->rtt, 0, sizeof(__u32) * MAX_PERF_SECONDS);
-                perf->recycle_time = context.now + NS_PER_30_SECONDS;
+                perf->recycle_time = context->now + NS_PER_30_SECONDS;
                 perf->next_entry = 0;
                 perf->has_fresh_data = 0;
             }
@@ -745,27 +704,27 @@ static __always_inline void xdp_pping_start(struct dissector_t *dissector, struc
     }
 
     // Populate the TCP Header
-    if (dissector->eth_type == ETH_P_IP)
+    if (context->protocol == ETH_P_IP)
     {
         // If its not TCP, stop
-        if (dissector->ip_header.iph + 1 > dissector->end)
+        if (context->ip_header.iph + 1 > context->data_end)
             return; // Stops the error checking from crashing
-        if (dissector->ip_header.iph->protocol != IPPROTO_TCP)
+        if (context->ip_header.iph->protocol != IPPROTO_TCP)
         {
             return;
         }
-        context.tcp = (struct tcphdr *)((char *)dissector->ip_header.iph + (dissector->ip_header.iph->ihl * 4));
+        context->tcp = (struct tcphdr *)((char *)context->ip_header.iph + (context->ip_header.iph->ihl * 4));
     }
-    else if (dissector->eth_type == ETH_P_IPV6)
+    else if (context->protocol == ETH_P_IPV6)
     {
         // If its not TCP, stop
-        if (dissector->ip_header.ip6h + 1 > dissector->end)
+        if (context->ip_header.ip6h + 1 > context->data_end)
             return; // Stops the error checking from crashing
-        if (dissector->ip_header.ip6h->nexthdr != IPPROTO_TCP)
+        if (context->ip_header.ip6h->nexthdr != IPPROTO_TCP)
         {
             return;
         }
-        context.tcp = (struct tcphdr *)(dissector->ip_header.ip6h + 1);
+        context->tcp = (struct tcphdr *)(context->ip_header.ip6h + 1);
     }
     else
     {
@@ -774,7 +733,7 @@ static __always_inline void xdp_pping_start(struct dissector_t *dissector, struc
     }
 
     // Bail out if the packet is incomplete
-    if (context.tcp + 1 > dissector->end)
+    if (context->tcp + 1 > context->data_end)
     {
         return;
     }
@@ -783,20 +742,20 @@ static __always_inline void xdp_pping_start(struct dissector_t *dissector, struc
     if (perf == NULL)
     {
         struct rotating_performance new_perf = {0};
-        new_perf.tc_handle = tc_handle;
-        new_perf.recycle_time = context.now + NS_PER_30_SECONDS;
+        new_perf.tc_handle = active_tc_handle;
+        new_perf.recycle_time = context->now + NS_PER_30_SECONDS;
         new_perf.has_fresh_data = 0;
-        if (bpf_map_update_elem(&rtt_tracker, &lookup_key->address, &new_perf, BPF_NOEXIST) != 0) return;
+        if (bpf_map_update_elem(&rtt_tracker, &active_tc_handle, &new_perf, BPF_NOEXIST) != 0) return;
     }
 
 
     // Start the parsing process
     struct packet_info p_info = {0};
-    if (parse_packet_identifier(&context, &p_info) < 0)
+    if (parse_packet_identifier(context, &p_info) < 0)
     {
         //bpf_debug("Unable to parse packet identifier");
         return;
     }
 
-    pping_parsed_packet(&context, &p_info);
+    pping_parsed_packet(context, &p_info);
 }
