@@ -90,11 +90,6 @@ int tc_iphash_to_cpu(struct __sk_buff *skb)
 
     // Temporary pping integration - needs a lot of cleaning
     struct parsing_context context = {0};
-    context.data_end = (void *)(long)skb->data_end;
-	context.data = (void *)(long)skb->data;
-    context.ip_header = dissector.ip_header;
-    context.l3_offset = dissector.l3offset;
-    context.protocol = dissector.eth_type;
     context.now = bpf_ktime_get_ns();
     context.skb_len = skb->len;
     context.tcp = NULL;

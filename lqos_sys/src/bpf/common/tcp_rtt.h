@@ -49,12 +49,7 @@ void debug_handle(__u32 handle) {
 
 struct parsing_context
 {
-    void *data;
-    void *data_end;
-    __u32 l3_offset;
-    union iph_ptr ip_header;
     __u32 skb_len;
-    __be16 protocol;
     struct tcphdr *tcp;
     __u32 tc_handle;
     __u64 now;
@@ -318,12 +313,12 @@ static __always_inline int parse_tcp_identifier(struct parsing_context *context,
                                                 __u16 *sport,
                                                 __u16 *dport, struct protocol_info *proto_info)
 {
-    if (parse_tcp_ts(context->tcp, context->data_end, &proto_info->pid, &proto_info->reply_pid) < 0)
+    if (parse_tcp_ts(context->tcp, context->dissector->end, &proto_info->pid, &proto_info->reply_pid) < 0)
         return -1; // Possible TODO, fall back on seq/ack instead
 
     // Do not timestamp pure ACKs (no payload)
     void *nh_pos = (context->tcp + 1) + (context->tcp->doff << 2);
-    proto_info->pid_valid = nh_pos - context->data < context->skb_len || context->tcp->syn;
+    proto_info->pid_valid = nh_pos - context->dissector->start < context->skb_len || context->tcp->syn;
 
     // Do not match on non-ACKs (TSecr not valid)
     proto_info->reply_pid_valid = context->tcp->ack;
@@ -356,13 +351,13 @@ static __always_inline int parse_tcp_identifier(struct parsing_context *context,
 static __always_inline int parse_packet_identifier(struct parsing_context *context, struct packet_info *p_info)
 {
     p_info->time = context->now;
-    if (context->protocol == ETH_P_IP)
+    if (context->dissector->eth_type == ETH_P_IP)
     {
         p_info->pid.flow.ipv = AF_INET;
-        map_ipv4_to_ipv6(&p_info->pid.flow.saddr.ip, context->ip_header.iph->saddr);
-        map_ipv4_to_ipv6(&p_info->pid.flow.daddr.ip, context->ip_header.iph->daddr);
+        map_ipv4_to_ipv6(&p_info->pid.flow.saddr.ip, context->dissector->ip_header.iph->saddr);
+        map_ipv4_to_ipv6(&p_info->pid.flow.daddr.ip, context->dissector->ip_header.iph->daddr);
     }
-    else if (context->protocol == ETH_P_IPV6)
+    else if (context->dissector->eth_type == ETH_P_IPV6)
     {
         p_info->pid.flow.ipv = AF_INET6;
         p_info->pid.flow.saddr.ip = context->dissector->src_ip;
@@ -720,27 +715,27 @@ static __always_inline void tc_pping_start(struct parsing_context *context)
     }
 
     // Populate the TCP Header
-    if (context->protocol == ETH_P_IP)
+    if (context->dissector->eth_type == ETH_P_IP)
     {
         // If its not TCP, stop
-        if (context->ip_header.iph + 1 > context->data_end)
+        if (context->dissector->ip_header.iph + 1 > context->dissector->end)
             return; // Stops the error checking from crashing
-        if (context->ip_header.iph->protocol != IPPROTO_TCP)
+        if (context->dissector->ip_header.iph->protocol != IPPROTO_TCP)
         {
             return;
         }
-        context->tcp = (struct tcphdr *)((char *)context->ip_header.iph + (context->ip_header.iph->ihl * 4));
+        context->tcp = (struct tcphdr *)((char *)context->dissector->ip_header.iph + (context->dissector->ip_header.iph->ihl * 4));
     }
-    else if (context->protocol == ETH_P_IPV6)
+    else if (context->dissector->eth_type == ETH_P_IPV6)
     {
         // If its not TCP, stop
-        if (context->ip_header.ip6h + 1 > context->data_end)
+        if (context->dissector->ip_header.ip6h + 1 > context->dissector->end)
             return; // Stops the error checking from crashing
-        if (context->ip_header.ip6h->nexthdr != IPPROTO_TCP)
+        if (context->dissector->ip_header.ip6h->nexthdr != IPPROTO_TCP)
         {
             return;
         }
-        context->tcp = (struct tcphdr *)(context->ip_header.ip6h + 1);
+        context->tcp = (struct tcphdr *)(context->dissector->ip_header.ip6h + 1);
     }
     else
     {
@@ -749,7 +744,7 @@ static __always_inline void tc_pping_start(struct parsing_context *context)
     }
 
     // Bail out if the packet is incomplete
-    if (context->tcp + 1 > context->data_end)
+    if (context->tcp + 1 > context->dissector->end)
     {
         return;
     }
