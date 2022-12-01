@@ -34,6 +34,7 @@ My modifications are Copyright 2022, Herbert Wolverson
 #include "maximums.h"
 #include "debug.h"
 #include "ip_hash.h"
+#include "dissector_tc.h"
 
 #define MAX_MEMCMP_SIZE 128
 
@@ -56,6 +57,7 @@ struct parsing_context
     struct tcphdr *tcp;
     __u32 tc_handle;
     __u64 now;
+    struct tc_dissector_t * dissector;
 };
 
 // Event type recorded for a packet flow
@@ -190,12 +192,10 @@ static __always_inline void map_ipv4_to_ipv6(struct in6_addr *ipv6, __be32 ipv4)
     //ipv6->in6_u.u6_addr32[3] = ipv4;
 }
 
-
 //  * Convenience function for getting the corresponding reverse flow.
 //  * PPing needs to keep track of flow in both directions, and sometimes
 //  * also needs to reverse the flow to report the "correct" (consistent
 //  * with Kathie's PPing) src and dest address.
-
 static __always_inline void reverse_flow(struct network_tuple *dest, struct network_tuple *src)
 {
     dest->ipv = src->ipv;
@@ -205,13 +205,12 @@ static __always_inline void reverse_flow(struct network_tuple *dest, struct netw
     dest->reserved = 0;
 }
 
-
+/*
 //  * Can't seem to get __builtin_memcmp to work, so hacking my own
 //  *
 //  * Based on https://githubhot.com/repo/iovisor/bcc/issues/3559,
 //  * __builtin_memcmp should work constant size but I still get the "failed to
 //  * find BTF for extern" error.
-
 static __always_inline int my_memcmp(const void *s1_, const void *s2_, __u32 size)
 {
     const __u8 *s1 = (const __u8 *)s1_, *s2 = (const __u8 *)s2_;
@@ -225,10 +224,12 @@ static __always_inline int my_memcmp(const void *s1_, const void *s2_, __u32 siz
 
     return 0;
 }
+*/
 
-static __always_inline bool is_dualflow_key(struct network_tuple *flow)
+static bool is_dualflow_key(struct network_tuple *flow)
 {
-    return my_memcmp(&flow->saddr, &flow->daddr, sizeof(flow->saddr)) <= 0;
+    return __builtin_memcpy(&flow->saddr, &flow->daddr, sizeof(flow->saddr)) <= 0;
+    //return my_memcmp(&flow->saddr, &flow->daddr, sizeof(flow->saddr)) <= 0;
 }
 
 static __always_inline struct flow_state *fstate_from_dfkey(struct dual_flow_state *df_state,
@@ -241,13 +242,11 @@ static __always_inline struct flow_state *fstate_from_dfkey(struct dual_flow_sta
     return is_dfkey ? &df_state->dir1 : &df_state->dir2;
 }
 
-
 //  * Parses the TSval and TSecr values from the TCP options field. If sucessful
 //  * the TSval and TSecr values will be stored at tsval and tsecr (in network
 //  * byte order).
 //  * Returns 0 if sucessful and -1 on failure
-
-static __always_inline int parse_tcp_ts(struct tcphdr *tcph, void *data_end, __u32 *tsval,
+static int parse_tcp_ts(struct tcphdr *tcph, void *data_end, __u32 *tsval,
                                         __u32 *tsecr)
 {
     int len = tcph->doff << 2;
@@ -298,7 +297,6 @@ static __always_inline int parse_tcp_ts(struct tcphdr *tcph, void *data_end, __u
     return -1;
 }
 
-
 //  * Attempts to fetch an identifier for TCP packets, based on the TCP timestamp
 //  * option.
 //  *
@@ -308,8 +306,7 @@ static __always_inline int parse_tcp_ts(struct tcphdr *tcph, void *data_end, __u
 //  * If successful, tcph, sport, dport and proto_info will be set
 //  * appropriately and 0 will be returned.
 //  * On failure -1 will be returned (and arguments will not be set).
-
-static __always_inline int parse_tcp_identifier(struct parsing_context *context,
+static int parse_tcp_identifier(struct parsing_context *context,
                                                 __u16 *sport,
                                                 __u16 *dport, struct protocol_info *proto_info)
 {
@@ -348,20 +345,15 @@ static __always_inline int parse_tcp_identifier(struct parsing_context *context,
 }
 
 // This is a bit of a hackjob from the original
-static __always_inline int parse_packet_identifier(struct parsing_context *context, struct packet_info *p_info)
+static int parse_packet_identifier(struct parsing_context *context, struct packet_info *p_info)
 {
     p_info->time = context->now;
-    if (context->protocol == ETH_P_IP)
-    {
-        p_info->pid.flow.ipv = AF_INET;
-        map_ipv4_to_ipv6(&p_info->pid.flow.saddr.ip, context->ip_header.iph->saddr);
-        map_ipv4_to_ipv6(&p_info->pid.flow.daddr.ip, context->ip_header.iph->daddr);
-    }
-    else if (context->protocol == ETH_P_IPV6)
+    // Since the dissector has already encoded the addresses, just use them
+    if (context->protocol == ETH_P_IPV6 || context->protocol == ETH_P_IP)
     {
         p_info->pid.flow.ipv = AF_INET6;
-        __builtin_memcpy(&p_info->pid.flow.saddr.ip, &context->ip_header.ip6h->saddr, sizeof(struct in6_addr));
-        __builtin_memcpy(&p_info->pid.flow.daddr.ip, &context->ip_header.ip6h->daddr, sizeof(struct in6_addr));
+        p_info->pid.flow.saddr.ip = context->dissector->src_ip;
+        p_info->pid.flow.daddr.ip = context->dissector->dst_ip;
     }
     else
     {
@@ -401,7 +393,6 @@ get_dualflow_key_from_packet(struct packet_info *p_info)
 {
     return p_info->pid_flow_is_dfkey ? &p_info->pid.flow : &p_info->reply_pid.flow;
 }
-
 
 //  * Initilizes an "empty" flow state based on the forward direction of the
 //  * current packet
@@ -472,11 +463,9 @@ create_dualflow_state(struct parsing_context *ctx, struct packet_info *p_info, b
     return (struct dual_flow_state *)bpf_map_lookup_elem(&flow_state, key);
 }
 
-static __always_inline struct dual_flow_state *
-lookup_or_create_dualflow_state(struct parsing_context *ctx, struct packet_info *p_info,
-                                bool *new_flow)
+static struct dual_flow_state * lookup_or_create_dualflow_state(struct parsing_context *ctx, struct packet_info *p_info, bool *new_flow)
 {
-    struct dual_flow_state *df_state;
+    struct dual_flow_state *df_state = NULL;
 
     struct network_tuple *key = get_dualflow_key_from_packet(p_info);
     df_state = (struct dual_flow_state *)bpf_map_lookup_elem(&flow_state, key);
@@ -485,7 +474,7 @@ lookup_or_create_dualflow_state(struct parsing_context *ctx, struct packet_info 
     {
         return df_state;
     }
-
+    
     // Only try to create new state if we have a valid pid
     if (!p_info->pid_valid || p_info->event_type == FLOW_EVENT_CLOSING ||
         p_info->event_type == FLOW_EVENT_CLOSING_BOTH)
@@ -645,14 +634,13 @@ static __always_inline void close_and_delete_flows(void *ctx, struct packet_info
     }
 }
 
-
 //  * Contains the actual pping logic that is applied after a packet has been
 //  * parsed and deemed to contain some valid identifier.
 //  * Looks up and updates flowstate (in both directions), tries to save a
 //  * timestamp of the packet, tries to match packet against previous timestamps,
 //  * calculates RTTs and pushes messages to userspace as appropriate.
 
-static __always_inline void pping_parsed_packet(struct parsing_context *context, struct packet_info *p_info)
+static void pping_parsed_packet(struct parsing_context *context, struct packet_info *p_info)
 {
     struct dual_flow_state *df_state;
     struct flow_state *fw_flow, *rev_flow;
@@ -676,7 +664,8 @@ static __always_inline void pping_parsed_packet(struct parsing_context *context,
     close_and_delete_flows(context, p_info, fw_flow, rev_flow);
 }
 
-// Entry poing for running pping in the tc context
+
+// Entry point for running pping in the tc context
 static __always_inline void tc_pping_start(struct parsing_context *context)
 {
     // Check to see if we can store perf info. Bail if we've hit the limit.
