@@ -19,7 +19,7 @@ use tui::{
 
 struct DataResult {
     totals: (u64, u64, u64, u64),
-    top: Vec<(String, (u64, u64), (u64, u64))>,
+    top: Vec<(String, (u64, u64), (u64, u64), f32)>,
 }
 
 async fn get_data() -> Result<DataResult> {
@@ -118,8 +118,8 @@ fn draw_pps<'a>(packets_per_second: (u64, u64), bits_per_second: (u64, u64)) -> 
     text
 }
 
-fn draw_top_pane<'a>(packets_per_second: (u64, u64), bits_per_second: (u64, u64), top: &[(String, (u64, u64), (u64, u64))]) -> Table<'a> {
-    let rows : Vec<Row> = top.iter().map(|(ip, (bits_d, bits_u), (packets_d, packets_u))| {
+fn draw_top_pane<'a>(packets_per_second: (u64, u64), bits_per_second: (u64, u64), top: &[(String, (u64, u64), (u64, u64), f32)]) -> Table<'a> {
+    let rows : Vec<Row> = top.iter().map(|(ip, (bits_d, bits_u), (packets_d, packets_u), rtt)| {
         Row::new(
             vec![
                 Cell::from(ip.clone()),
@@ -127,12 +127,13 @@ fn draw_top_pane<'a>(packets_per_second: (u64, u64), bits_per_second: (u64, u64)
                 Cell::from(format!("🠕 {}", scale_bits(*bits_u))),
                 Cell::from(format!("🠗 {}", scale_packets(*packets_d))),
                 Cell::from(format!("🠕 {}", scale_packets(*packets_u))),
+                Cell::from(format!("{:.2} ms", *rtt)),
             ]
         )
     }).collect();
 
     let header = Row::new(vec![
-        "Local IP", "Download", "Upload", "Pkts Dn", "Pkts Up"
+        "Local IP", "Download", "Upload", "Pkts Dn", "Pkts Up", "TCP RTT ms"
     ])
     .style(Style::default().fg(Color::Yellow));
 
@@ -145,6 +146,7 @@ fn draw_top_pane<'a>(packets_per_second: (u64, u64), bits_per_second: (u64, u64)
             Constraint::Length(15),
             Constraint::Length(15),
             Constraint::Length(15),
+            Constraint::Length(11),
         ])
 }
 

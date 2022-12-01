@@ -18,8 +18,6 @@ pub async fn spawn_throughput_monitor() {
             let _ = task::spawn_blocking(move || {
                 let mut thoughput = THROUGHPUT_TRACKER.write();
                 let _ = thoughput.tick();
-                println!("---------------------------------------------------");
-                println!("{:?}", lqos_sys::get_tcp_round_trip_times());
             }).await;
             interval.tick().await;
         }
@@ -35,13 +33,14 @@ pub fn current_throughput() -> BusResponse {
 }
 
 pub fn top_n(n: u32) -> BusResponse {
-    let mut full_list : Vec<(XdpIpAddress, (u64, u64), (u64, u64))> = {
+    let mut full_list : Vec<(XdpIpAddress, (u64, u64), (u64, u64), f32)> = {
         let tp = THROUGHPUT_TRACKER.read();
         tp.raw_data.iter().map(|(ip, te)| {
             (
                 *ip,
                 te.bytes_per_second,
-                te.packets_per_second
+                te.packets_per_second,
+                te.median_latency(),
             )
         }).collect()
     };
@@ -51,11 +50,12 @@ pub fn top_n(n: u32) -> BusResponse {
     let result = full_list
         .iter()
         .take(n as usize)
-        .map(|(ip, (bytes_dn, bytes_up), (packets_dn, packets_up ))| {
+        .map(|(ip, (bytes_dn, bytes_up), (packets_dn, packets_up ), median_rtt)| {
         (
             ip.as_ip().to_string(),
             (bytes_dn * 8, bytes_up * 8),
-            (*packets_dn, *packets_up)
+            (*packets_dn, *packets_up),
+            *median_rtt
         )
     }).collect();
     BusResponse::TopDownloaders(result)
@@ -82,17 +82,19 @@ impl ThroughputTracker {
         let throughput = get_throughput_map()?;
         let value_dump = throughput.dump_vec();
         
-        // Copy previous byte/packet numbers
+        // Copy previous byte/packet numbers and reset RTT data
         self.raw_data
             .iter_mut()
-            .filter(|(_ip, vals)| vals.first_cycle < self.cycle)
             .for_each(|(_k, v)| {
-                v.bytes_per_second.0 = v.bytes.0 - v.prev_bytes.0;
-                v.bytes_per_second.1 = v.bytes.1 - v.prev_bytes.1;
-                v.packets_per_second.0 = v.packets.0 - v.prev_packets.0;
-                v.packets_per_second.1 = v.packets.1 - v.prev_packets.1;
-                v.prev_bytes = v.bytes;
-                v.prev_packets = v.packets;
+                if v.first_cycle < self.cycle {
+                    v.bytes_per_second.0 = v.bytes.0 - v.prev_bytes.0;
+                    v.bytes_per_second.1 = v.bytes.1 - v.prev_bytes.1;
+                    v.packets_per_second.0 = v.packets.0 - v.prev_packets.0;
+                    v.packets_per_second.1 = v.packets.1 - v.prev_packets.1;
+                    v.prev_bytes = v.bytes;
+                    v.prev_packets = v.packets;
+                }
+                //v.recent_rtt_data = [0; 60];
             });
         
         value_dump
@@ -120,6 +122,7 @@ impl ThroughputTracker {
                         bytes_per_second: (0, 0),
                         packets_per_second: (0, 0),
                         tc_handle: 0,
+                        recent_rtt_data: [0; 60],
                     };
                     for c in counts {
                         entry.bytes.0 += c.download_bytes;
@@ -133,6 +136,18 @@ impl ThroughputTracker {
                     self.raw_data.insert(*xdp_ip, entry);
                 }
             });
+
+        // Apply RTT data
+        if let Ok(rtt_dump) = lqos_sys::get_tcp_round_trip_times() {
+            for (raw_ip, rtt) in rtt_dump {
+                if rtt.has_fresh_data != 0 {
+                    let ip = XdpIpAddress{ ip: raw_ip };
+                    if let Some(tracker) = self.raw_data.get_mut(&ip) {
+                        tracker.recent_rtt_data = rtt.rtt;
+                    }
+                }
+            }
+        }
 
         // Update totals
         self.bytes_per_second = (0,0);
@@ -153,6 +168,8 @@ impl ThroughputTracker {
                 self.packets_per_second.0 += packets_down;
                 self.packets_per_second.1 += packets_up;
             });
+
+        // Onto the next cycle
         self.cycle += 1;
         Ok(())
     }
@@ -184,4 +201,16 @@ struct ThroughputEntry {
     bytes_per_second: (u64, u64),
     packets_per_second: (u64, u64),
     tc_handle: u32,
+    recent_rtt_data: [u32; 60],
+}
+
+impl ThroughputEntry {
+    fn median_latency(&self) -> f32 {
+        let mut shifted : Vec<f32> = self.recent_rtt_data.iter().filter(|n| **n != 0).map(|n| *n as f32 / 100.0).collect();
+        if shifted.is_empty() {
+            return 0.0;
+        }
+        shifted.sort_by(|a,b| a.partial_cmp(&b).unwrap());
+        shifted[shifted.len() / 2]
+    }
 }

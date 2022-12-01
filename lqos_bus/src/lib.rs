@@ -26,7 +26,7 @@ pub struct BusReply {
 pub enum BusResponse {
     Ack, // Yes, we're alive
     CurrentThroughput{ bits_per_second: (u64, u64), packets_per_second: (u64, u64) },
-    TopDownloaders(Vec<(String, (u64, u64), (u64, u64))>),
+    TopDownloaders(Vec<(String, (u64, u64), (u64, u64), f32)>), // Clean this: (bits)(packets)(latency)
 }
 
 pub fn encode_request(request: &BusSession) -> Result<Vec<u8>> {
