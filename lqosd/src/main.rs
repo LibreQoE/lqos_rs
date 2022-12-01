@@ -4,13 +4,28 @@ use lqos_config::LibreQoSConfig;
 use lqos_sys::LibreQoSKernels;
 use anyhow::Result;
 use tokio::{net::{TcpListener, TcpStream}, io::{AsyncReadExt, AsyncWriteExt}};
+use signal_hook::{consts::SIGINT, iterator::Signals};
 
 #[tokio::main]
 async fn main() -> Result<()> {
     println!("LibreQoS Daemon Starting");
     let config = LibreQoSConfig::load_from_default()?;
-    let _kernels = LibreQoSKernels::new(&config.internet_interface, &config.isp_interface)?;
+    let kernels = LibreQoSKernels::new(&config.internet_interface, &config.isp_interface)?;
     throughput_tracker::spawn_throughput_monitor().await;
+
+    let mut signals = Signals::new(&[SIGINT])?;
+
+    std::thread::spawn(move || {
+        for sig in signals.forever() {
+            println!("Received signal {:?}", sig);
+            std::mem::drop(kernels);
+            std::process::exit(0);
+        }
+    });
+
+    // Some test setup
+    lqos_sys::add_ip_to_tc("100.64.1.2/32", (1, 12), 2)?;
+    lqos_sys::add_ip_to_tc("100.64.1.3/32", (2, 12), 3)?;
 
     // Main bus listen loop
     let listener = TcpListener::bind(BUS_BIND_ADDRESS).await?;

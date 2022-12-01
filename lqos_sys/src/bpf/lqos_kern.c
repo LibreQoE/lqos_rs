@@ -74,8 +74,8 @@ int tc_iphash_to_cpu(struct __sk_buff *skb)
     }
 
     // Remove me
-    __u32 cpu = bpf_get_smp_processor_id();
-    bpf_debug("TC egress fired on CPU %u", cpu);
+    //__u32 cpu = bpf_get_smp_processor_id();
+    //bpf_debug("TC egress fired on CPU %u", cpu);
 
     // TODO: Support XDP Metadata shunt
     // In the meantime, we'll do it the hard way:
@@ -88,27 +88,24 @@ int tc_iphash_to_cpu(struct __sk_buff *skb)
     struct ip_hash_key lookup_key;
     struct ip_hash_info * ip_info = tc_setup_lookup_key_and_tc_cpu(direction, &lookup_key, &dissector);
 
-    __u32 tc_handle = 0;
-    if (ip_info) tc_handle = ip_info->tc_handle;
-
     // Temporary pping integration - needs a lot of cleaning
     struct parsing_context context = {0};
-    context.now = bpf_ktime_get_ns();
-    context.data = (void *)(long)skb->data;
     context.data_end = (void *)(long)skb->data_end;
+	context.data = (void *)(long)skb->data;
     context.ip_header = dissector.ip_header;
     context.l3_offset = dissector.l3offset;
-    context.now = 0;
     context.protocol = dissector.eth_type;
+    context.now = bpf_ktime_get_ns();
     context.skb_len = skb->len;
-    context.tc_handle = tc_handle;
     context.tcp = NULL;
     context.dissector = &dissector;
+    context.tc_handle = ip_info ? ip_info->tc_handle : 0;
+    //context.client_address = &lookup_key.address;
     tc_pping_start(&context);
 
     if (ip_info && ip_info->tc_handle != 0) {
         // We found a matching mapped TC flow
-        bpf_debug("Mapped to TC handle %u", ip_info->tc_handle);
+        //bpf_debug("Mapped to TC handle %u", ip_info->tc_handle);
         skb->priority = ip_info->tc_handle;
     } else {
         // We didn't find anything

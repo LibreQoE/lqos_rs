@@ -13,9 +13,8 @@ My modifications are Copyright 2022, Herbert Wolverson
 */
 /* Shared structures between userspace and kernel space
  */
-#pragma once
-
-#include "maximums.h"
+#ifndef __TC_CLASSIFY_KERN_PPING_COMMON_H
+#define __TC_CLASSIFY_KERN_PPING_COMMON_H
 
 /* 30 second rotating performance buffer, per-TC handle */
 #define MAX_PERF_SECONDS 60
@@ -77,3 +76,5 @@ struct rotating_performance
     __u64 recycle_time;
     __u32 has_fresh_data;
 };
+
+#endif /* __TC_CLASSIFY_KERN_PPING_COMMON_H */

@@ -30,8 +30,27 @@ where K:Default+Clone, V:Default+Clone
         }
     }
 
-    pub fn iter(&self) -> BpfMapIterator<K,V> {
-        BpfMapIterator::new(self.fd)
+    pub fn dump_vec(&self) -> Vec<(K, V)> {
+        let mut result = Vec::new();
+
+        let mut prev_key : *mut K = null_mut();
+        let mut key : K = K::default();
+        let key_ptr : *mut K = &mut key;
+        let mut value = V::default();
+        let value_ptr : *mut V = &mut value;
+
+        unsafe {
+            while bpf_map_get_next_key(self.fd, prev_key as *mut c_void, key_ptr as *mut c_void) == 0 {
+                bpf_map_lookup_elem(self.fd, key_ptr as *mut c_void, value_ptr as *mut c_void);
+                result.push((
+                    key.clone(),
+                    value.clone(),
+                ));
+                prev_key = key_ptr;
+            }
+        }
+
+        result
     }
 
     pub fn insert(&mut self, key: &mut K, value: &mut V) -> Result<()> {
@@ -51,73 +70,5 @@ where K:Default+Clone, V:Default+Clone
 impl <K,V> Drop for BpfMap<K,V> {
     fn drop(&mut self) {
         let _ = nix::unistd::close(self.fd);
-    }
-}
-
-pub struct BpfMapIterator<K,V> {
-    fd: i32,
-    next_result: i32,
-    key: K,
-    prev_key : *mut K,
-    current: V,
-}
-
-impl <K,V> BpfMapIterator<K,V> 
-where K:Default+Clone, V:Default+Clone
-{
-    fn new(fd: i32) -> Self {
-        // Find the first result
-        let prev_key : *mut K = null_mut();
-        let mut key : K = K::default();
-        let key_ptr : *mut K = &mut key;
-        let next_result = unsafe {
-            bpf_map_get_next_key(fd, prev_key as *mut c_void, key_ptr as *mut c_void)
-        };
-        
-        let mut current = V::default();
-        if next_result != 0 {
-            let current_ptr : *mut V = &mut current;
-            unsafe {
-                bpf_map_lookup_elem(fd, key_ptr as *mut c_void, current_ptr as *mut c_void);
-            }
-        }
-
-        Self {
-            fd,
-            next_result,
-            key,
-            current,
-            prev_key,
-        }
-    }
-}
-
-impl <K,V> Iterator for BpfMapIterator<K, V> 
-where K:Default+Clone, V:Default+Clone
-{
-    type Item = (K,V);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        // Return if no data
-        if self.next_result != 0 {
-            return None;
-        }
-
-        let key_ptr : *mut K = &mut self.key;
-        let key = self.key.clone();
-        let value = self.current.clone();
-
-        self.prev_key = &mut self.key;
-        self.next_result = unsafe {
-            bpf_map_get_next_key(self.fd, self.prev_key as *mut c_void, key_ptr as *mut c_void)
-        };
-        if self.next_result != 0 {
-            let current_ptr : *mut V = &mut self.current;
-            unsafe {
-                bpf_map_lookup_elem(self.fd, key_ptr as *mut c_void, current_ptr as *mut c_void);
-            }
-        }
-
-        Some((key.clone(), value.clone()))
     }
 }

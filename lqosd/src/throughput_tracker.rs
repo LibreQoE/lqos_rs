@@ -18,6 +18,8 @@ pub async fn spawn_throughput_monitor() {
             let _ = task::spawn_blocking(move || {
                 let mut thoughput = THROUGHPUT_TRACKER.write();
                 let _ = thoughput.tick();
+                println!("---------------------------------------------------");
+                println!("{:?}", lqos_sys::get_tcp_round_trip_times());
             }).await;
             interval.tick().await;
         }
