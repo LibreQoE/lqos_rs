@@ -23,7 +23,7 @@ impl Default for RttTrackingEntry {
 }
 
 pub fn get_tcp_round_trip_times() -> Result<()> {
-    let rtt_tracker = BpfMap::<u32, RttTrackingEntry>::from_path("/sys/fs/bpf/rtt_tracker")?;
+    let rtt_tracker = BpfMap::<[u8; 16], RttTrackingEntry>::from_path("/sys/fs/bpf/rtt_tracker")?;
     let rtt_data = rtt_tracker.dump_vec();
     println!("{:?}", rtt_data);
     Ok(())

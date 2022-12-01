@@ -39,21 +39,13 @@ My modifications are Copyright 2022, Herbert Wolverson
 
 #define MAX_MEMCMP_SIZE 128
 
-#ifdef INSTRUMENT
-void debug_handle(__u32 handle) {
-    union tc_handle_type tch;
-    tch.handle = handle;
-    bpf_debug("Handle: %u:%u", tch.majmin[1], tch.majmin[0]);
-}
-#endif
-
 struct parsing_context
 {
     __u32 skb_len;
     struct tcphdr *tcp;
-    __u32 tc_handle;
     __u64 now;
     struct tc_dissector_t * dissector;
+    struct in6_addr * active_host;
 };
 
 /* Event type recorded for a packet flow */
@@ -156,7 +148,7 @@ struct
 struct
 {
     __uint(type, BPF_MAP_TYPE_LRU_HASH);
-    __type(key, __u32); // Keyed to the TC handle
+    __type(key, struct in6_addr); // Keyed to the IP address
     __type(value, struct rotating_performance);
     __uint(max_entries, IP_HASH_ENTRIES_MAX);
     __uint(pinning, LIBBPF_PIN_BY_NAME);
@@ -592,7 +584,7 @@ static __always_inline void pping_timestamp_packet(struct flow_state *f_state, v
  */
 static __always_inline void pping_match_packet(struct flow_state *f_state,
                                                struct packet_info *p_info,
-                                               __u32 check_tc_handle)
+                                               struct in6_addr *active_host)
 {
     __u64 *p_ts;
 
@@ -615,11 +607,7 @@ static __always_inline void pping_match_packet(struct flow_state *f_state,
     }
 
     // Update the most performance map to include this data
-    #ifdef INSTRUMENT
-    bpf_debug("Adding state");
-    debug_handle(f_state->tc_handle.handle);
-    #endif
-    struct rotating_performance *perf = (struct rotating_performance *)bpf_map_lookup_elem(&rtt_tracker, &check_tc_handle);
+    struct rotating_performance *perf = (struct rotating_performance *)bpf_map_lookup_elem(&rtt_tracker, active_host);
     if (perf == NULL) return;
     __sync_fetch_and_add(&perf->next_entry, 1);
     __u32 next_entry = perf->next_entry;
@@ -679,7 +667,7 @@ static __always_inline void pping_parsed_packet(struct parsing_context *context,
 
     rev_flow = get_reverse_flowstate_from_packet(df_state, p_info);
     update_reverse_flowstate(context, p_info, rev_flow);
-    pping_match_packet(rev_flow, p_info, context->tc_handle);
+    pping_match_packet(rev_flow, p_info, context->active_host);
 
     close_and_delete_flows(context, p_info, fw_flow, rev_flow);
 }
@@ -689,12 +677,7 @@ static __always_inline void tc_pping_start(struct parsing_context *context)
 {
     // Check to see if we can store perf info. Bail if we've hit the limit.
     // Copying occurs because otherwise the validator complains.
-    context->now = bpf_ktime_get_ns();
-    __u32 active_tc_handle = context->tc_handle;
-    #ifdef INSTRUMENT
-    debug_handle(active_tc_handle);
-    #endif
-    struct rotating_performance *perf = (struct rotating_performance *)bpf_map_lookup_elem(&rtt_tracker, &active_tc_handle);
+    struct rotating_performance *perf = (struct rotating_performance *)bpf_map_lookup_elem(&rtt_tracker, context->active_host);
     if (perf) {
         if (perf->next_entry >= MAX_PERF_SECONDS-1) {
             //bpf_debug("Flow has max samples. Not sampling further until next reset.");
@@ -753,10 +736,9 @@ static __always_inline void tc_pping_start(struct parsing_context *context)
     if (perf == NULL)
     {
         struct rotating_performance new_perf = {0};
-        new_perf.tc_handle = active_tc_handle;
         new_perf.recycle_time = context->now + NS_PER_30_SECONDS;
         new_perf.has_fresh_data = 0;
-        if (bpf_map_update_elem(&rtt_tracker, &active_tc_handle, &new_perf, BPF_NOEXIST) != 0) return;
+        if (bpf_map_update_elem(&rtt_tracker, context->active_host, &new_perf, BPF_NOEXIST) != 0) return;
     }
 
 

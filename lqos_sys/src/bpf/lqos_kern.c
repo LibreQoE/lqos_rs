@@ -94,8 +94,7 @@ int tc_iphash_to_cpu(struct __sk_buff *skb)
     context.skb_len = skb->len;
     context.tcp = NULL;
     context.dissector = &dissector;
-    context.tc_handle = ip_info ? ip_info->tc_handle : 0;
-    //context.client_address = &lookup_key.address;
+    context.active_host = &lookup_key.address;
     tc_pping_start(&context);
 
     if (ip_info && ip_info->tc_handle != 0) {
