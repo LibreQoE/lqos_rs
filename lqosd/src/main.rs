@@ -23,10 +23,6 @@ async fn main() -> Result<()> {
         }
     });
 
-    // Some test setup
-    lqos_sys::add_ip_to_tc("100.64.1.2/32", (1, 12), 2)?;
-    lqos_sys::add_ip_to_tc("100.64.1.3/32", (2, 12), 3)?;
-
     // Main bus listen loop
     let listener = TcpListener::bind(BUS_BIND_ADDRESS).await?;
     println!("Listening on: {}", BUS_BIND_ADDRESS);
@@ -52,6 +48,13 @@ async fn main() -> Result<()> {
                             BusRequest::Ping => lqos_bus::BusResponse::Ack,
                             BusRequest::GetCurrentThroughput => throughput_tracker::current_throughput(),
                             BusRequest::GetTopNDownloaders(n) => throughput_tracker::top_n(*n),
+                            BusRequest::MapIpToFlow { ip_address, tc_major, tc_minor, cpu } => {
+                                if lqos_sys::add_ip_to_tc(&ip_address, (*tc_major, *tc_minor), *cpu).is_ok() {
+                                    lqos_bus::BusResponse::Ack
+                                } else {
+                                    lqos_bus::BusResponse::Fail
+                                }
+                            }
                         });
                     }
                     let _ = reply(&encode_response(&response).unwrap(), &mut socket).await;

@@ -16,6 +16,7 @@ pub enum BusRequest {
     Ping, // A generic "is it alive" test
     GetCurrentThroughput,
     GetTopNDownloaders(u32),
+    MapIpToFlow{ip_address: String, tc_major: u16, tc_minor: u16, cpu: u32},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -27,6 +28,7 @@ pub struct BusReply {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum BusResponse {
     Ack, // Yes, we're alive
+    Fail, // The operation failed
     CurrentThroughput{ bits_per_second: (u64, u64), packets_per_second: (u64, u64) },
     TopDownloaders(Vec<IpStats>), // Clean this: (bits)(packets)(latency)
 }
