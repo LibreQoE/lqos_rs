@@ -144,7 +144,7 @@ impl ThroughputTracker {
         if let Ok(rtt_dump) = lqos_sys::get_tcp_round_trip_times() {
             for (raw_ip, rtt) in rtt_dump {
                 if rtt.has_fresh_data != 0 {
-                    let ip = XdpIpAddress { ip: raw_ip };
+                    let ip = XdpIpAddress(raw_ip);
                     if let Some(tracker) = self.raw_data.get_mut(&ip) {
                         tracker.recent_rtt_data = rtt.rtt;
                     }

@@ -36,7 +36,7 @@ pub(crate) fn list_mapped_ips() -> BusResponse {
         let data = raw
             .iter()
             .map(|(ip_key, ip_data)| IpMapping {
-                ip_address: XdpIpAddress { ip: ip_key.address }.as_ip().to_string(),
+                ip_address: XdpIpAddress(ip_key.address).as_ip().to_string(),
                 prefix_length: ip_key.prefixlen,
                 tc_handle: ip_data.tc_handle,
                 cpu: ip_data.cpu,

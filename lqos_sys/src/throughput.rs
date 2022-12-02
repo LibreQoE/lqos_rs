@@ -1,7 +1,5 @@
-use crate::bpf_per_cpu_map::BpfPerCpuMap;
+use crate::{bpf_per_cpu_map::BpfPerCpuMap, XdpIpAddress};
 use anyhow::Result;
-use byteorder::{BigEndian, ByteOrder};
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 #[repr(C)]
 #[derive(Debug, Clone)]
@@ -25,77 +23,7 @@ impl Default for HostCounter {
     }
 }
 
-#[repr(C)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct XdpIpAddress {
-    pub ip: [u8; 16],
-}
-
-impl Default for XdpIpAddress {
-    fn default() -> Self {
-        Self { ip: [0xFF; 16] }
-    }
-}
-
-impl XdpIpAddress {
-    pub fn from_ip(ip: IpAddr) -> Self {
-        let mut result = Self::default();
-        match ip {
-            IpAddr::V4(ip) => {
-                result.ip[12] = ip.octets()[0];
-                result.ip[13] = ip.octets()[1];
-                result.ip[14] = ip.octets()[2];
-                result.ip[15] = ip.octets()[3];
-            }
-            IpAddr::V6(ip) => {
-                for i in 0..8 {
-                    let base = i * 2;
-                    result.ip[base + 1] = ip.octets()[base];
-                    result.ip[base] = ip.octets()[base + 1];
-                }
-            }
-        }
-
-        result
-    }
-
-    pub fn as_ip(&self) -> IpAddr {
-        if self.ip[0] == 0xFF
-            && self.ip[1] == 0xFF
-            && self.ip[2] == 0xFF
-            && self.ip[3] == 0xFF
-            && self.ip[4] == 0xFF
-            && self.ip[5] == 0xFF
-            && self.ip[6] == 0xFF
-            && self.ip[7] == 0xFF
-            && self.ip[8] == 0xFF
-            && self.ip[9] == 0xFF
-            && self.ip[10] == 0xFF
-            && self.ip[11] == 0xFF
-        {
-            // It's an IPv4 Address
-            IpAddr::V4(Ipv4Addr::new(
-                self.ip[12],
-                self.ip[13],
-                self.ip[14],
-                self.ip[15],
-            ))
-        } else {
-            // It's an IPv6 address
-            IpAddr::V6(Ipv6Addr::new(
-                BigEndian::read_u16(&self.ip[0..2]),
-                BigEndian::read_u16(&self.ip[2..4]),
-                BigEndian::read_u16(&self.ip[4..6]),
-                BigEndian::read_u16(&self.ip[6..8]),
-                BigEndian::read_u16(&self.ip[8..10]),
-                BigEndian::read_u16(&self.ip[10..12]),
-                BigEndian::read_u16(&self.ip[12..14]),
-                BigEndian::read_u16(&self.ip[13..]),
-            ))
-        }
-    }
-}
-
+/// Queries the underlying `map_traffic` eBPF pinned map, and returns every entry.
 pub fn get_throughput_map() -> Result<BpfPerCpuMap<XdpIpAddress, HostCounter>> {
     Ok(BpfPerCpuMap::<XdpIpAddress, HostCounter>::from_path(
         "/sys/fs/bpf/map_traffic",
