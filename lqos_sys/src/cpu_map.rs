@@ -1,9 +1,12 @@
 use std::{ffi::CString, os::raw::c_void};
-
 use anyhow::{Error, Result};
 use libbpf_sys::{bpf_map_update_elem, bpf_obj_get, libbpf_num_possible_cpus};
 
-pub struct CpuMapping {
+//* Provides an interface for querying the number of CPUs eBPF can
+//* see, and marking CPUs as available. Currently marks ALL eBPF
+//* usable CPUs as available.
+
+pub(crate) struct CpuMapping {
     fd_cpu_map: i32,
     fd_cpu_available: i32,
 }
@@ -19,14 +22,14 @@ fn get_map_fd(filename: &str) -> Result<i32> {
 }
 
 impl CpuMapping {
-    pub fn new() -> Result<Self> {
+    pub(crate) fn new() -> Result<Self> {
         Ok(Self {
             fd_cpu_map: get_map_fd("/sys/fs/bpf/cpu_map")?,
             fd_cpu_available: get_map_fd("/sys/fs/bpf/cpus_available")?,
         })
     }
 
-    pub fn mark_cpus_available(&self) -> Result<()> {
+    pub(crate) fn mark_cpus_available(&self) -> Result<()> {
         let cpu_count = unsafe { libbpf_num_possible_cpus() } as u32;
 
         let queue_size = 2048u32;
