@@ -7,12 +7,12 @@ fn command_warnings(command_result: &std::io::Result<Output>) {
         println!("cargo:warning={:?}", command_result);
     }
 
-    let r = command_result.as_ref().unwrap().stdout.clone();    
+    let r = command_result.as_ref().unwrap().stdout.clone();
     if !r.is_empty() {
         println!("cargo:warning={}", String::from_utf8(r).unwrap());
     }
 
-    let r = command_result.as_ref().unwrap().stderr.clone();    
+    let r = command_result.as_ref().unwrap().stderr.clone();
     if !r.is_empty() {
         panic!("{}", String::from_utf8(r).unwrap());
     }
@@ -23,7 +23,7 @@ fn command_warnings_errors_only(command_result: &std::io::Result<Output>) {
         println!("cargo:warning={:?}", command_result);
     }
 
-    let r = command_result.as_ref().unwrap().stderr.clone();    
+    let r = command_result.as_ref().unwrap().stderr.clone();
     if !r.is_empty() {
         panic!("{}", String::from_utf8(r).unwrap());
     }
@@ -79,11 +79,7 @@ fn main() {
     // bpftool gen skeleton ../bin/libre_xdp_kern.o > libre_xdp_skel.h
     let skel_target = format!("{}/lqos_kern_skel.h", out_dir.to_str().unwrap());
     let skel_result = Command::new("bpftool")
-        .args([
-            "gen",
-            "skeleton",
-            &link_target,
-        ])
+        .args(["gen", "skeleton", &link_target])
         .output();
     command_warnings_errors_only(&skel_result);
     let header_file = String::from_utf8(skel_result.unwrap().stdout).unwrap();
@@ -105,13 +101,13 @@ fn main() {
             "wrapper.c",
             &format!("-I{}", out_dir.to_str().unwrap()),
             "-o",
-            &shrinkwrap_lib
+            &shrinkwrap_lib,
         ])
         .output();
     command_warnings(&build_result);
-    
+
     let _build_result = Command::new("ar")
-    .args([
+        .args([
             "r",
             &shrinkwrap_a,
             &shrinkwrap_lib,
@@ -120,7 +116,10 @@ fn main() {
         .output();
     //command_warnings(&build_result);
 
-    println!("cargo:rustc-link-search=native={}", out_dir.to_str().unwrap());
+    println!(
+        "cargo:rustc-link-search=native={}",
+        out_dir.to_str().unwrap()
+    );
     println!("cargo:rustc-link-lib=static=shrinkwrap");
 
     // 6: Use bindgen to generate a Rust wrapper

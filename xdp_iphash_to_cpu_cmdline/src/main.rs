@@ -1,6 +1,9 @@
 use anyhow::{Error, Result};
 use clap::{Parser, Subcommand};
-use lqos_bus::{decode_response, encode_request, BusRequest, BusSession, BUS_BIND_ADDRESS, BusResponse, IpMapping};
+use lqos_bus::{
+    decode_response, encode_request, BusRequest, BusResponse, BusSession, IpMapping,
+    BUS_BIND_ADDRESS,
+};
 use std::{net::IpAddr, process::exit};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -73,13 +76,13 @@ fn print_ips(ips: &[IpMapping]) {
         let ip_formatted = if ip.ip_address.contains(":") {
             format!("{}/{}", ip.ip_address, ip.prefix_length)
         } else {
-            format!("{}/{}", ip.ip_address, ip.prefix_length-96)
+            format!("{}/{}", ip.ip_address, ip.prefix_length - 96)
         };
-        let (major, minor) = (
-            (ip.tc_handle & 0xFFFF0000) >> 16,
-            ip.tc_handle & 0x0000FFFF,
+        let (major, minor) = ((ip.tc_handle & 0xFFFF0000) >> 16, ip.tc_handle & 0x0000FFFF);
+        println!(
+            "{:<45} CPU: {:<4} TC: {}:{}",
+            ip_formatted, ip.cpu, major, minor
         );
-        println!("{:<45} CPU: {:<4} TC: {}:{}", ip_formatted, ip.cpu, major, minor);
     }
     println!("");
 }
@@ -110,7 +113,12 @@ pub async fn main() -> Result<()> {
         Some(Commands::Add { ip, classid, cpu }) => {
             talk_to_server(parse_add_ip(&ip, &classid, &cpu)?).await?;
         }
-        Some(Commands::Del { ip }) => talk_to_server(BusRequest::DelIpFlow { ip_address: ip.to_string() }).await?,
+        Some(Commands::Del { ip }) => {
+            talk_to_server(BusRequest::DelIpFlow {
+                ip_address: ip.to_string(),
+            })
+            .await?
+        }
         Some(Commands::Clear) => talk_to_server(BusRequest::ClearIpFlow).await?,
         Some(Commands::List) => talk_to_server(BusRequest::ListIpFlow).await?,
         None => {

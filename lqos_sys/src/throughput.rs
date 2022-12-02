@@ -1,15 +1,15 @@
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use anyhow::Result;
 use crate::bpf_per_cpu_map::BpfPerCpuMap;
+use anyhow::Result;
 use byteorder::{BigEndian, ByteOrder};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub struct HostCounter {
-    pub download_bytes : u64,
-    pub upload_bytes : u64,
-    pub download_packets : u64,
-    pub upload_packets : u64,
+    pub download_bytes: u64,
+    pub upload_bytes: u64,
+    pub download_packets: u64,
+    pub upload_packets: u64,
     pub tc_handle: u32,
 }
 
@@ -50,8 +50,8 @@ impl XdpIpAddress {
             IpAddr::V6(ip) => {
                 for i in 0..8 {
                     let base = i * 2;
-                    result.ip[base+1] =  ip.octets()[base];
-                    result.ip[base] =  ip.octets()[base+1];
+                    result.ip[base + 1] = ip.octets()[base];
+                    result.ip[base] = ip.octets()[base + 1];
                 }
             }
         }
@@ -60,18 +60,29 @@ impl XdpIpAddress {
     }
 
     pub fn as_ip(&self) -> IpAddr {
-        if self.ip[0] == 0xFF && self.ip[1] == 0xFF &&
-            self.ip[2] == 0xFF && self.ip[3] == 0xFF &&
-            self.ip[4] == 0xFF && self.ip[5] == 0xFF &&
-            self.ip[6] == 0xFF && self.ip[7] == 0xFF &&
-            self.ip[8] == 0xFF && self.ip[9] == 0xFF &&
-            self.ip[10] == 0xFF && self.ip[11] == 0xFF 
+        if self.ip[0] == 0xFF
+            && self.ip[1] == 0xFF
+            && self.ip[2] == 0xFF
+            && self.ip[3] == 0xFF
+            && self.ip[4] == 0xFF
+            && self.ip[5] == 0xFF
+            && self.ip[6] == 0xFF
+            && self.ip[7] == 0xFF
+            && self.ip[8] == 0xFF
+            && self.ip[9] == 0xFF
+            && self.ip[10] == 0xFF
+            && self.ip[11] == 0xFF
         {
             // It's an IPv4 Address
-            IpAddr::V4(Ipv4Addr::new(self.ip[12], self.ip[13], self.ip[14], self.ip[15]))
+            IpAddr::V4(Ipv4Addr::new(
+                self.ip[12],
+                self.ip[13],
+                self.ip[14],
+                self.ip[15],
+            ))
         } else {
             // It's an IPv6 address
-            IpAddr::V6( Ipv6Addr::new(
+            IpAddr::V6(Ipv6Addr::new(
                 BigEndian::read_u16(&self.ip[0..2]),
                 BigEndian::read_u16(&self.ip[2..4]),
                 BigEndian::read_u16(&self.ip[4..6]),
@@ -80,11 +91,13 @@ impl XdpIpAddress {
                 BigEndian::read_u16(&self.ip[10..12]),
                 BigEndian::read_u16(&self.ip[12..14]),
                 BigEndian::read_u16(&self.ip[13..]),
-            ) )
+            ))
         }
     }
 }
 
 pub fn get_throughput_map() -> Result<BpfPerCpuMap<XdpIpAddress, HostCounter>> {
-    Ok(BpfPerCpuMap::<XdpIpAddress, HostCounter>::from_path("/sys/fs/bpf/map_traffic")?)
+    Ok(BpfPerCpuMap::<XdpIpAddress, HostCounter>::from_path(
+        "/sys/fs/bpf/map_traffic",
+    )?)
 }

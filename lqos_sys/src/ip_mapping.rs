@@ -1,5 +1,5 @@
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use anyhow::Result;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 use crate::{bpf_map::BpfMap, XdpIpAddress};
 
@@ -12,11 +12,10 @@ pub struct IpToMap {
 
 impl IpToMap {
     pub fn new(address: &str, tc_handle: (u16, u16), cpu: u32) -> Result<Self> {
-
         let address_part; // Filled in later
         let mut subnet_part = 128;
         if address.contains("/") {
-            let parts : Vec<&str> = address.split('/').collect();
+            let parts: Vec<&str> = address.split('/').collect();
             address_part = parts[0].to_string();
             subnet_part = parts[1].replace("/", "").parse()?;
         } else {
@@ -52,45 +51,56 @@ impl IpToMap {
 #[repr(C)]
 #[derive(Clone)]
 pub struct IpHashData {
-	pub cpu : u32,
-	pub tc_handle : u32,
+    pub cpu: u32,
+    pub tc_handle: u32,
 }
 
 impl Default for IpHashData {
     fn default() -> Self {
-        Self { cpu: 0, tc_handle: 0 }
+        Self {
+            cpu: 0,
+            tc_handle: 0,
+        }
     }
 }
 
 #[repr(C)]
 #[derive(Clone)]
 pub struct IpHashKey {
-	pub prefixlen: u32,
-	pub address: [u8; 16],
+    pub prefixlen: u32,
+    pub address: [u8; 16],
 }
 
 impl Default for IpHashKey {
     fn default() -> Self {
-        Self { prefixlen: 0, address: [0xFF; 16] }
+        Self {
+            prefixlen: 0,
+            address: [0xFF; 16],
+        }
     }
 }
 
 pub fn add_ip_to_tc(address: &str, tc_handle: (u16, u16), cpu: u32) -> Result<()> {
     let ip_to_add = IpToMap::new(address, tc_handle, cpu)?;
-    let mut bpf_map = BpfMap::<IpHashKey, IpHashData>::from_path("/sys/fs/bpf/map_ip_to_cpu_and_tc")?;
+    let mut bpf_map =
+        BpfMap::<IpHashKey, IpHashData>::from_path("/sys/fs/bpf/map_ip_to_cpu_and_tc")?;
     let address = XdpIpAddress::from_ip(ip_to_add.subnet);
     let mut key = IpHashKey {
         prefixlen: ip_to_add.prefix,
         address: address.ip,
     };
-    let mut value = IpHashData { cpu: ip_to_add.cpu, tc_handle: ip_to_add.handle() };
+    let mut value = IpHashData {
+        cpu: ip_to_add.cpu,
+        tc_handle: ip_to_add.handle(),
+    };
     bpf_map.insert(&mut key, &mut value)?;
     Ok(())
 }
 
 pub fn del_ip_from_tc(address: &str) -> Result<()> {
-    let ip_to_add = IpToMap::new(address, (0,0), 0)?;
-    let mut bpf_map = BpfMap::<IpHashKey, IpHashData>::from_path("/sys/fs/bpf/map_ip_to_cpu_and_tc")?;
+    let ip_to_add = IpToMap::new(address, (0, 0), 0)?;
+    let mut bpf_map =
+        BpfMap::<IpHashKey, IpHashData>::from_path("/sys/fs/bpf/map_ip_to_cpu_and_tc")?;
     let ip = address.parse::<IpAddr>()?;
     let ip = XdpIpAddress::from_ip(ip);
     let mut key = IpHashKey {
@@ -102,7 +112,8 @@ pub fn del_ip_from_tc(address: &str) -> Result<()> {
 }
 
 pub fn clear_ips_from_tc() -> Result<()> {
-    let mut bpf_map = BpfMap::<IpHashKey, IpHashData>::from_path("/sys/fs/bpf/map_ip_to_cpu_and_tc")?;
+    let mut bpf_map =
+        BpfMap::<IpHashKey, IpHashData>::from_path("/sys/fs/bpf/map_ip_to_cpu_and_tc")?;
     bpf_map.clear()
 }
 

@@ -1,7 +1,7 @@
-use std::{path::Path, fs};
-use anyhow::{Result, Error};
+use anyhow::{Error, Result};
+use std::{fs, path::Path};
 
-const DEFAULT_DIR : &str = "/opt/libreqos/v1.3/ispConfig.py";
+const DEFAULT_DIR: &str = "/opt/libreqos/v1.3/ispConfig.py";
 
 pub struct LibreQoSConfig {
     pub internet_interface: String,
@@ -16,7 +16,7 @@ impl LibreQoSConfig {
         }
 
         // Read the config
-        let mut result = Self{
+        let mut result = Self {
             internet_interface: String::new(),
             isp_interface: String::new(),
         };
@@ -31,7 +31,7 @@ impl LibreQoSConfig {
         }
 
         // Read the config
-        let mut result = Self{
+        let mut result = Self {
             internet_interface: String::new(),
             isp_interface: String::new(),
         };
@@ -54,5 +54,9 @@ impl LibreQoSConfig {
 }
 
 fn split_at_equals(line: &str) -> String {
-    line.split('=').nth(1).unwrap_or("").trim().replace("\"", "")
+    line.split('=')
+        .nth(1)
+        .unwrap_or("")
+        .trim()
+        .replace("\"", "")
 }

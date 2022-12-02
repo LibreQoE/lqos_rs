@@ -1,7 +1,7 @@
 use anyhow::Result;
 use crossterm::{event::KeyCode, terminal::enable_raw_mode};
 use lqos_bus::{
-    decode_response, encode_request, BusRequest, BusResponse, BusSession, BUS_BIND_ADDRESS, IpStats,
+    decode_response, encode_request, BusRequest, BusResponse, BusSession, IpStats, BUS_BIND_ADDRESS,
 };
 use std::{io, time::Duration};
 use tokio::{
@@ -13,7 +13,7 @@ use tui::{
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Style},
     text::{Span, Spans},
-    widgets::{Block, BorderType, Borders, Paragraph, Table, Cell, Row},
+    widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table},
     Terminal,
 };
 
@@ -30,7 +30,10 @@ async fn get_data() -> Result<DataResult> {
     let mut stream = TcpStream::connect(BUS_BIND_ADDRESS).await?;
     let test = BusSession {
         auth_cookie: 1234,
-        requests: vec![BusRequest::GetCurrentThroughput, BusRequest::GetTopNDownloaders(10)],
+        requests: vec![
+            BusRequest::GetCurrentThroughput,
+            BusRequest::GetTopNDownloaders(10),
+        ],
     };
     let msg = encode_request(&test)?;
     stream.write(&msg).await?;
@@ -118,28 +121,42 @@ fn draw_pps<'a>(packets_per_second: (u64, u64), bits_per_second: (u64, u64)) -> 
     text
 }
 
-fn draw_top_pane<'a>(top: &[IpStats], packets_per_second: (u64, u64), bits_per_second: (u64, u64)) -> Table<'a> {
-    let rows : Vec<Row> = top.iter().map(|stats| {
-        Row::new(
-            vec![
+fn draw_top_pane<'a>(
+    top: &[IpStats],
+    packets_per_second: (u64, u64),
+    bits_per_second: (u64, u64),
+) -> Table<'a> {
+    let rows: Vec<Row> = top
+        .iter()
+        .map(|stats| {
+            Row::new(vec![
                 Cell::from(stats.ip_address.clone()),
-                Cell::from(format!("🠗 {}",scale_bits(stats.bits_per_second.0))),
+                Cell::from(format!("🠗 {}", scale_bits(stats.bits_per_second.0))),
                 Cell::from(format!("🠕 {}", scale_bits(stats.bits_per_second.1))),
                 Cell::from(format!("🠗 {}", scale_packets(stats.packets_per_second.0))),
                 Cell::from(format!("🠕 {}", scale_packets(stats.packets_per_second.1))),
                 Cell::from(format!("{:.2} ms", stats.median_tcp_rtt)),
-            ]
-        )
-    }).collect();
+            ])
+        })
+        .collect();
 
     let header = Row::new(vec![
-        "Local IP", "Download", "Upload", "Pkts Dn", "Pkts Up", "TCP RTT ms"
+        "Local IP",
+        "Download",
+        "Upload",
+        "Pkts Dn",
+        "Pkts Up",
+        "TCP RTT ms",
     ])
     .style(Style::default().fg(Color::Yellow));
 
     Table::new(rows)
         .header(header)
-        .block(Block::default().borders(Borders::ALL).title(draw_pps(packets_per_second, bits_per_second)))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(draw_pps(packets_per_second, bits_per_second)),
+        )
         .widths(&[
             Constraint::Min(40),
             Constraint::Length(15),
@@ -169,7 +186,7 @@ pub async fn main() -> Result<()> {
             bits = (bits_down, bits_up);
             top = result.top;
         }
-        
+
         //terminal.clear()?;
         terminal.draw(|f| {
             let chunks = Layout::default()

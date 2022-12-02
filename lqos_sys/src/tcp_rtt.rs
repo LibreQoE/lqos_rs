@@ -8,7 +8,7 @@ pub struct RttTrackingEntry {
     pub rtt: [u32; 60],
     pub next_entry: u32,
     pub recycle_time: u64,
-    pub has_fresh_data: u32
+    pub has_fresh_data: u32,
 }
 
 impl Default for RttTrackingEntry {

@@ -3,14 +3,13 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
+use crate::cpu_map::CpuMapping;
 use anyhow::{Error, Result};
 use libbpf_sys::{
-    bpf_xdp_attach, libbpf_set_strict_mode, LIBBPF_STRICT_ALL,
-    XDP_FLAGS_UPDATE_IF_NOEXIST,
+    bpf_xdp_attach, libbpf_set_strict_mode, LIBBPF_STRICT_ALL, XDP_FLAGS_UPDATE_IF_NOEXIST,
 };
-use nix::libc::{if_nametoindex, geteuid};
-use std::{ffi::{CString}};
-use crate::cpu_map::CpuMapping;
+use nix::libc::{geteuid, if_nametoindex};
+use std::ffi::CString;
 
 mod bpf {
     #![allow(warnings, unused)]
@@ -19,7 +18,7 @@ mod bpf {
 
 pub fn check_root() -> Result<()> {
     unsafe {
-        if geteuid()==0 {
+        if geteuid() == 0 {
             Ok(())
         } else {
             Err(Error::msg("You need to be root to do this."))
@@ -42,12 +41,7 @@ pub fn unload_xdp_from_interface(interface_name: &str) -> Result<()> {
     check_root()?;
     let interface_index = interface_name_to_index(interface_name)?.try_into()?;
     unsafe {
-        let err = bpf_xdp_attach(
-            interface_index,
-            -1,
-            1 << 0,
-            std::ptr::null(),
-        );
+        let err = bpf_xdp_attach(interface_index, -1, 1 << 0, std::ptr::null());
         if err != 0 {
             return Err(Error::msg("Unable to unload from interface."));
         }
@@ -91,7 +85,10 @@ pub enum InterfaceDirection {
     IspNetwork,
 }
 
-pub fn attach_xdp_and_tc_to_interface(interface_name: &str, direction: InterfaceDirection) -> Result<()> {
+pub fn attach_xdp_and_tc_to_interface(
+    interface_name: &str,
+    direction: InterfaceDirection,
+) -> Result<()> {
     check_root()?;
     // Check the interface is valid
     let interface_index = interface_name_to_index(interface_name)?;
@@ -127,13 +124,10 @@ pub fn attach_xdp_and_tc_to_interface(interface_name: &str, direction: Interface
     // extern int tc_attach_egress(int ifindex, bool verbose, struct lqos_kern *obj);
     // extern int tc_detach_egress(int ifindex, bool verbose, bool flush_hook, char * ifname);
     let interface_c = CString::new(interface_name)?;
-    let _ = unsafe {
-        bpf::tc_detach_egress(interface_index as i32, true, true, interface_c.as_ptr())
-    }; // Ignoring error, because it's ok to not have something to detach
+    let _ =
+        unsafe { bpf::tc_detach_egress(interface_index as i32, true, true, interface_c.as_ptr()) }; // Ignoring error, because it's ok to not have something to detach
 
-    let error = unsafe {
-        bpf::tc_attach_egress(interface_index as i32, true, skeleton)
-    };
+    let error = unsafe { bpf::tc_attach_egress(interface_index as i32, true, skeleton) };
     if error != 0 {
         return Err(Error::msg("Unable to attach TC to interface"));
     }

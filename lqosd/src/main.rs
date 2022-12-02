@@ -1,5 +1,6 @@
-mod throughput_tracker;
 mod ip_mapping;
+mod throughput_tracker;
+use crate::ip_mapping::{clear_ip_flows, del_ip_flow, list_mapped_ips, map_ip_to_flow};
 use anyhow::Result;
 use lqos_bus::{
     cookie_value, decode_request, encode_response, BusReply, BusRequest, BUS_BIND_ADDRESS,
@@ -11,7 +12,6 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
 };
-use crate::ip_mapping::{map_ip_to_flow, del_ip_flow, clear_ip_flows, list_mapped_ips};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -53,7 +53,9 @@ async fn main() -> Result<()> {
                         //println!("Request: {:?}", req);
                         response.responses.push(match req {
                             BusRequest::Ping => lqos_bus::BusResponse::Ack,
-                            BusRequest::GetCurrentThroughput => throughput_tracker::current_throughput(),
+                            BusRequest::GetCurrentThroughput => {
+                                throughput_tracker::current_throughput()
+                            }
                             BusRequest::GetTopNDownloaders(n) => throughput_tracker::top_n(*n),
                             BusRequest::MapIpToFlow {
                                 ip_address,

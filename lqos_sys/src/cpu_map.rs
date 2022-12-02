@@ -1,7 +1,7 @@
 use std::{ffi::CString, os::raw::c_void};
 
-use anyhow::{Result, Error};
-use libbpf_sys::{bpf_obj_get, libbpf_num_possible_cpus, bpf_map_update_elem};
+use anyhow::{Error, Result};
+use libbpf_sys::{bpf_map_update_elem, bpf_obj_get, libbpf_num_possible_cpus};
 
 pub struct CpuMapping {
     fd_cpu_map: i32,
@@ -10,9 +10,7 @@ pub struct CpuMapping {
 
 fn get_map_fd(filename: &str) -> Result<i32> {
     let filename_c = CString::new(filename)?;
-    let fd = unsafe {
-        bpf_obj_get(filename_c.as_ptr())
-    };
+    let fd = unsafe { bpf_obj_get(filename_c.as_ptr()) };
     if fd < 0 {
         Err(Error::msg("Unable to open BPF map"))
     } else {
@@ -29,21 +27,19 @@ impl CpuMapping {
     }
 
     pub fn mark_cpus_available(&self) -> Result<()> {
-        let cpu_count = unsafe {
-            libbpf_num_possible_cpus()
-        } as u32;
+        let cpu_count = unsafe { libbpf_num_possible_cpus() } as u32;
 
         let queue_size = 2048u32;
-        let val_ptr : *const u32 = &queue_size;
-        for cpu in 0 .. cpu_count {
+        let val_ptr: *const u32 = &queue_size;
+        for cpu in 0..cpu_count {
             println!("Mapping core #{cpu}");
             // Insert into the cpu map
-            let cpu_ptr : *const u32 = &cpu;
+            let cpu_ptr: *const u32 = &cpu;
             let error = unsafe {
                 bpf_map_update_elem(
-                    self.fd_cpu_map, 
-                    cpu_ptr as *const c_void, 
-                    val_ptr as *const c_void, 
+                    self.fd_cpu_map,
+                    cpu_ptr as *const c_void,
+                    val_ptr as *const c_void,
                     0,
                 )
             };
@@ -54,10 +50,10 @@ impl CpuMapping {
             // Insert into the available list
             let error = unsafe {
                 bpf_map_update_elem(
-                    self.fd_cpu_available, 
-                    cpu_ptr as *const c_void, 
-                    cpu_ptr as *const c_void, 
-                    0
+                    self.fd_cpu_available,
+                    cpu_ptr as *const c_void,
+                    cpu_ptr as *const c_void,
+                    0,
                 )
             };
             if error != 0 {
