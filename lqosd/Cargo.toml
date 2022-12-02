@@ -7,7 +7,7 @@ edition = "2021"
 anyhow = "1"
 lqos_config = { path = "../lqos_config" }
 lqos_sys = { path = "../lqos_sys" }
-tokio = { version = "1.22", features = [ "full" ] }
+tokio = { version = "1.22", features = [ "full", "parking_lot" ] }
 lazy_static = "1.4"
 parking_lot = "0.12"
 lqos_bus = { path = "../lqos_bus" }
