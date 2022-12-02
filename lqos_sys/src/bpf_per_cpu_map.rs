@@ -9,6 +9,11 @@ use std::{
     ptr::null_mut,
 };
 
+/// Represents an underlying BPF map, accessed via the filesystem.
+/// `BpfMap` *only* talks to PER-CPU variants of maps.
+/// 
+/// `K` is the *key* type, indexing the map.
+/// `V` is the *value* type, and must exactly match the underlying C data type.
 pub(crate) struct BpfPerCpuMap<K, V> {
     fd: i32,
     _key_phantom: PhantomData<K>,
@@ -20,6 +25,9 @@ where
     K: Default + Clone,
     V: Default + Clone + Debug,
 {
+    /// Connect to a PER-CPU BPF map via a filename. Connects the internal
+    /// file descriptor, which is held until the structure is
+    /// dropped. The index of the CPU is *not* specified.
     pub(crate) fn from_path(filename: &str) -> Result<Self> {
         let filename_c = CString::new(filename)?;
         let fd = unsafe { bpf_obj_get(filename_c.as_ptr()) };
@@ -34,6 +42,10 @@ where
         }
     }
 
+    /// Iterates the entire contents of the underlying eBPF per-cpu map.
+    /// Each iteration returns one entry per CPU, even if there isn't a
+    /// CPU-local map entry. Each result is therefore returned as one
+    /// key and a vector of values.
     pub(crate) fn dump_vec(&self) -> Vec<(K, Vec<V>)> {
         let mut result = Vec::new();
         let num_cpus = unsafe { libbpf_num_possible_cpus() };
