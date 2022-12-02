@@ -105,7 +105,7 @@ fn parse_add_ip(ip: &str, classid: &str, cpu: &str) -> Result<BusRequest> {
     })
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 pub async fn main() -> Result<()> {
     let cli = Args::parse();
 
