@@ -16,3 +16,10 @@ This project contains a number of projects arranged in a workspace. The projects
 * `lqtop` - A CLI tool that outputs the top X downloaders and mostly verifies that the bus and daemons work.
 * `xdp_iphash_to_cpu_cmdline` - An almost-compatible command that acts like the tool of the same name from the previous verion.
 
+## Required Ubuntu packages
+
+* `clang`
+* `linux-tools-common` (for `bpftool`)
+* `libbpf-dev`
+* `gcc-multilib`
+* `llvm`

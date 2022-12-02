@@ -2,14 +2,14 @@ use std::env;
 use std::path::PathBuf;
 use std::process::{Command, Output};
 
-fn command_warnings(command_result: &std::io::Result<Output>) {
+fn command_warnings(section: &str, command_result: &std::io::Result<Output>) {
     if command_result.is_err() {
-        println!("cargo:warning={:?}", command_result);
+        println!("cargo:warning=[{section}]{:?}", command_result);
     }
 
     let r = command_result.as_ref().unwrap().stdout.clone();
     if !r.is_empty() {
-        println!("cargo:warning={}", String::from_utf8(r).unwrap());
+        println!("cargo:warning=[{section}]{}", String::from_utf8(r).unwrap());
     }
 
     let r = command_result.as_ref().unwrap().stderr.clone();
@@ -18,14 +18,14 @@ fn command_warnings(command_result: &std::io::Result<Output>) {
     }
 }
 
-fn command_warnings_errors_only(command_result: &std::io::Result<Output>) {
+fn command_warnings_errors_only(section: &str, command_result: &std::io::Result<Output>) {
     if command_result.is_err() {
-        println!("cargo:warning={:?}", command_result);
+        println!("cargo:warning=[{section}]{:?}", command_result);
     }
 
     let r = command_result.as_ref().unwrap().stderr.clone();
     if !r.is_empty() {
-        panic!("{}", String::from_utf8(r).unwrap());
+        println!("cargo:warning=[{section}] {}", String::from_utf8(r).unwrap());
     }
 }
 
@@ -57,7 +57,7 @@ fn main() {
             "lqos_kern.c",
         ])
         .output();
-    command_warnings(&compile_result);
+    command_warnings("clang", &compile_result);
 
     // 2: Link the .ll file into a .o file
     // Command line:
@@ -72,7 +72,7 @@ fn main() {
             &build_target,
         ])
         .output();
-    command_warnings(&link_result);
+    command_warnings("llc", &link_result);
 
     // 3: Use bpftool to build the skeleton file
     // Command line:
@@ -81,7 +81,7 @@ fn main() {
     let skel_result = Command::new("bpftool")
         .args(["gen", "skeleton", &link_target])
         .output();
-    command_warnings_errors_only(&skel_result);
+    command_warnings_errors_only("bpf skel", &skel_result);
     let header_file = String::from_utf8(skel_result.unwrap().stdout).unwrap();
     std::fs::write(&skel_target, header_file).unwrap();
 
@@ -104,7 +104,7 @@ fn main() {
             &shrinkwrap_lib,
         ])
         .output();
-    command_warnings(&build_result);
+    command_warnings("clang - wrapper", &build_result);
 
     let _build_result = Command::new("ar")
         .args([
