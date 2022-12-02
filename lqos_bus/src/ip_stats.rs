@@ -15,3 +15,13 @@ pub struct IpMapping {
     pub tc_handle: u32,
     pub cpu: u32,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct XdpPpingResult {
+    pub tc: String,
+    pub avg: f32,
+    pub min: f32,
+    pub max: f32,
+    pub median: f32,
+    pub samples: u32,
+}

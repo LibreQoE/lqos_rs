@@ -66,6 +66,7 @@ async fn main() -> Result<()> {
                             BusRequest::DelIpFlow { ip_address } => del_ip_flow(&ip_address),
                             BusRequest::ClearIpFlow => clear_ip_flows(),
                             BusRequest::ListIpFlow => list_mapped_ips(),
+                            BusRequest::XdpPping => throughput_tracker::xdp_pping_compat(),
                         });
                     }
                     //println!("{:?}", response);

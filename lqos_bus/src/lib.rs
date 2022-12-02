@@ -1,6 +1,6 @@
 mod ip_stats;
 use anyhow::Result;
-pub use ip_stats::{IpMapping, IpStats};
+pub use ip_stats::{IpMapping, IpStats, XdpPpingResult};
 use serde::{Deserialize, Serialize};
 
 pub const BUS_BIND_ADDRESS: &str = "127.0.0.1:9999";
@@ -27,6 +27,7 @@ pub enum BusRequest {
     },
     ClearIpFlow,
     ListIpFlow,
+    XdpPping,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -45,6 +46,7 @@ pub enum BusResponse {
     },
     TopDownloaders(Vec<IpStats>),
     MappedIps(Vec<IpMapping>),
+    XdpPping(Vec<XdpPpingResult>),
 }
 
 pub fn encode_request(request: &BusSession) -> Result<Vec<u8>> {

@@ -15,6 +15,7 @@ This project contains a number of projects arranged in a workspace. The projects
     * Listens for bus commands and applies them.
 * `lqtop` - A CLI tool that outputs the top X downloaders and mostly verifies that the bus and daemons work.
 * `xdp_iphash_to_cpu_cmdline` - An almost-compatible command that acts like the tool of the same name from the previous verion.
+* `xdp_pping` - Port of the previous release's `xdp_pping` tool, for compatibility. Will eventually not be needed.
 
 ## Required Ubuntu packages
 

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use lazy_static::*;
-use lqos_bus::{BusResponse, IpStats};
+use lqos_bus::{BusResponse, IpStats, XdpPpingResult};
 use lqos_sys::{get_throughput_map, XdpIpAddress};
 use parking_lot::RwLock;
 use std::{collections::HashMap, time::Duration};
@@ -66,6 +66,41 @@ pub fn top_n(n: u32) -> BusResponse {
         )
         .collect();
     BusResponse::TopDownloaders(result)
+}
+
+pub fn xdp_pping_compat() -> BusResponse {
+    let raw = THROUGHPUT_TRACKER.read();
+    let result = raw.raw_data
+        .iter()
+        .filter_map(|(_ip, data)| {
+            if data.tc_handle > 0 {
+                let mut valid_samples : Vec<u32> = data.recent_rtt_data.iter().filter(|d| **d > 0).map(|d| *d).collect();
+                let samples = valid_samples.len() as u32;
+                if samples > 0 {
+                    valid_samples.sort_by(|a,b| (*a).cmp(&b));
+                    let median = valid_samples[valid_samples.len() / 2] as f32 / 100.0;
+                    let max = *(valid_samples.iter().max().unwrap()) as f32 / 100.0;
+                    let min = *(valid_samples.iter().min().unwrap()) as f32 / 100.0;
+                    let sum = valid_samples.iter().sum::<u32>() as f32 / 100.0;
+                    let avg = sum / samples as f32;
+
+                    Some(XdpPpingResult {
+                        tc: format!("{}:{}", (data.tc_handle & 0xFFFF0000) >> 16, data.tc_handle & 0x0000FFFF),
+                        median,
+                        avg,
+                        max,
+                        min,
+                        samples
+                    })
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
+    BusResponse::XdpPping(result)
 }
 
 pub struct ThroughputTracker {
