@@ -23,3 +23,7 @@ This project contains a number of projects arranged in a workspace. The projects
 * `libbpf-dev`
 * `gcc-multilib`
 * `llvm`
+
+## Helper Scripts
+
+* `remove_pinned_maps.sh` deletes all of the BPF shared maps. Useful during development.
