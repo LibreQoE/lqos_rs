@@ -1,10 +1,17 @@
 mod throughput_tracker;
-use lqos_bus::{decode_request, BUS_BIND_ADDRESS, cookie_value, BusRequest, BusReply, encode_response};
+mod ip_mapping;
+use anyhow::Result;
+use lqos_bus::{
+    cookie_value, decode_request, encode_response, BusReply, BusRequest, BUS_BIND_ADDRESS,
+};
 use lqos_config::LibreQoSConfig;
 use lqos_sys::LibreQoSKernels;
-use anyhow::Result;
-use tokio::{net::{TcpListener, TcpStream}, io::{AsyncReadExt, AsyncWriteExt}};
 use signal_hook::{consts::SIGINT, iterator::Signals};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{TcpListener, TcpStream},
+};
+use crate::ip_mapping::{map_ip_to_flow, del_ip_flow, clear_ip_flows, list_mapped_ips};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -28,14 +35,14 @@ async fn main() -> Result<()> {
     println!("Listening on: {}", BUS_BIND_ADDRESS);
     loop {
         let (mut socket, _) = listener.accept().await?;
-            tokio::spawn(async move {
+        tokio::spawn(async move {
             let mut buf = vec![0; 1024];
 
             let _ = socket
                 .read(&mut buf)
                 .await
                 .expect("failed to read data from socket");
-            
+
             if let Ok(request) = decode_request(&buf) {
                 if request.auth_cookie == cookie_value() {
                     let mut response = BusReply {
@@ -43,20 +50,23 @@ async fn main() -> Result<()> {
                         responses: Vec::new(),
                     };
                     for req in request.requests.iter() {
-                        response.responses.push(
-                        match req {
+                        //println!("Request: {:?}", req);
+                        response.responses.push(match req {
                             BusRequest::Ping => lqos_bus::BusResponse::Ack,
                             BusRequest::GetCurrentThroughput => throughput_tracker::current_throughput(),
                             BusRequest::GetTopNDownloaders(n) => throughput_tracker::top_n(*n),
-                            BusRequest::MapIpToFlow { ip_address, tc_major, tc_minor, cpu } => {
-                                if lqos_sys::add_ip_to_tc(&ip_address, (*tc_major, *tc_minor), *cpu).is_ok() {
-                                    lqos_bus::BusResponse::Ack
-                                } else {
-                                    lqos_bus::BusResponse::Fail
-                                }
-                            }
+                            BusRequest::MapIpToFlow {
+                                ip_address,
+                                tc_major,
+                                tc_minor,
+                                cpu,
+                            } => map_ip_to_flow(ip_address, *tc_major, *tc_minor, *cpu),
+                            BusRequest::DelIpFlow { ip_address } => del_ip_flow(&ip_address),
+                            BusRequest::ClearIpFlow => clear_ip_flows(),
+                            BusRequest::ListIpFlow => list_mapped_ips(),
                         });
                     }
+                    //println!("{:?}", response);
                     let _ = reply(&encode_response(&response).unwrap(), &mut socket).await;
                 }
             }

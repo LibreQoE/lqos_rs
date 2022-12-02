@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use std::{ffi::{CString, c_void}, marker::PhantomData, ptr::null_mut};
 use anyhow::{Result, Error};
-use libbpf_sys::{bpf_obj_get, bpf_map_get_next_key, bpf_map_lookup_elem, bpf_map_update_elem, BPF_NOEXIST};
+use libbpf_sys::{bpf_obj_get, bpf_map_get_next_key, bpf_map_lookup_elem, bpf_map_update_elem, BPF_NOEXIST, bpf_map_delete_elem};
 
 pub struct BpfMap<K, V> {
     fd: i32,
@@ -64,6 +64,36 @@ where K:Default+Clone, V:Default+Clone
         } else {
             Ok(())
         }
+    }
+
+    pub fn delete(&mut self, key: &mut K) -> Result<()> {
+        let key_ptr : *mut K = key;
+        let err = unsafe {
+            bpf_map_delete_elem(self.fd, key_ptr as *mut c_void)
+        };
+        if err != 0 {
+            Err(Error::msg("Unable to delete from map"))
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn clear(&mut self) -> Result<()> {
+        let mut key = K::default();
+        let mut prev_key : *mut K = null_mut();
+        unsafe {
+            let key_ptr : *mut K = &mut key;
+            while bpf_map_get_next_key(self.fd, prev_key as *mut c_void, key_ptr as *mut c_void) == 0 {
+                bpf_map_delete_elem(self.fd, key_ptr as *mut c_void);
+                prev_key = key_ptr;
+            }
+            // Doing this twice because I've even emulated a bug in the parent. Ugh.
+            while bpf_map_get_next_key(self.fd, prev_key as *mut c_void, key_ptr as *mut c_void) == 0 {
+                bpf_map_delete_elem(self.fd, key_ptr as *mut c_void);
+                prev_key = key_ptr;
+            }
+        }
+        Ok(())
     }
 }
 

@@ -16,4 +16,5 @@ members = [
     "lqosd", # LibreQoS Daemon
     "lqos_bus", # Bus data types
     "lqtop", # A command line utility to show current activity
+    "xdp_iphash_to_cpu_cmdline", # Rust port of the C xdp_iphash_to_cpu_cmdline tool, for compatibility
 ]
