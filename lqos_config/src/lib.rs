@@ -59,4 +59,5 @@ fn split_at_equals(line: &str) -> String {
         .unwrap_or("")
         .trim()
         .replace("\"", "")
+        .replace("'", "")
 }

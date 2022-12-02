@@ -30,7 +30,7 @@ pub fn interface_name_to_index(interface_name: &str) -> Result<u32> {
     let if_name = CString::new(interface_name)?;
     let index = unsafe { if_nametoindex(if_name.as_ptr()) };
     if index == 0 {
-        Err(Error::msg("Unknown interface: {interface_name"))
+        Err(Error::msg(format!("Unknown interface: {interface_name}")))
     } else {
         Ok(index)
     }
