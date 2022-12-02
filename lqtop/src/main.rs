@@ -167,7 +167,7 @@ fn draw_top_pane<'a>(
         ])
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 pub async fn main() -> Result<()> {
     let mut packets = (0, 0);
     let mut bits = (0, 0);
