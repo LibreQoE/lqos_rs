@@ -9,7 +9,7 @@ use std::{
     ptr::null_mut,
 };
 
-pub struct BpfPerCpuMap<K, V> {
+pub(crate) struct BpfPerCpuMap<K, V> {
     fd: i32,
     _key_phantom: PhantomData<K>,
     _val_phantom: PhantomData<V>,
@@ -20,7 +20,7 @@ where
     K: Default + Clone,
     V: Default + Clone + Debug,
 {
-    pub fn from_path(filename: &str) -> Result<Self> {
+    pub(crate) fn from_path(filename: &str) -> Result<Self> {
         let filename_c = CString::new(filename)?;
         let fd = unsafe { bpf_obj_get(filename_c.as_ptr()) };
         if fd < 0 {
@@ -34,7 +34,7 @@ where
         }
     }
 
-    pub fn dump_vec(&self) -> Vec<(K, Vec<V>)> {
+    pub(crate) fn dump_vec(&self) -> Vec<(K, Vec<V>)> {
         let mut result = Vec::new();
         let num_cpus = unsafe { libbpf_num_possible_cpus() };
 

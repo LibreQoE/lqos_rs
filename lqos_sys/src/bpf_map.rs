@@ -10,7 +10,7 @@ use std::{
     ptr::null_mut,
 };
 
-pub struct BpfMap<K, V> {
+pub(crate) struct BpfMap<K, V> {
     fd: i32,
     _key_phantom: PhantomData<K>,
     _val_phantom: PhantomData<V>,
@@ -21,7 +21,7 @@ where
     K: Default + Clone,
     V: Default + Clone,
 {
-    pub fn from_path(filename: &str) -> Result<Self> {
+    pub(crate) fn from_path(filename: &str) -> Result<Self> {
         let filename_c = CString::new(filename)?;
         let fd = unsafe { bpf_obj_get(filename_c.as_ptr()) };
         if fd < 0 {
@@ -35,7 +35,7 @@ where
         }
     }
 
-    pub fn dump_vec(&self) -> Vec<(K, V)> {
+    pub(crate) fn dump_vec(&self) -> Vec<(K, V)> {
         let mut result = Vec::new();
 
         let mut prev_key: *mut K = null_mut();
@@ -57,7 +57,7 @@ where
         result
     }
 
-    pub fn insert(&mut self, key: &mut K, value: &mut V) -> Result<()> {
+    pub(crate) fn insert(&mut self, key: &mut K, value: &mut V) -> Result<()> {
         let key_ptr: *mut K = key;
         let val_ptr: *mut V = value;
         let err = unsafe {
@@ -75,7 +75,7 @@ where
         }
     }
 
-    pub fn delete(&mut self, key: &mut K) -> Result<()> {
+    pub(crate) fn delete(&mut self, key: &mut K) -> Result<()> {
         let key_ptr: *mut K = key;
         let err = unsafe { bpf_map_delete_elem(self.fd, key_ptr as *mut c_void) };
         if err != 0 {
@@ -85,7 +85,7 @@ where
         }
     }
 
-    pub fn clear(&mut self) -> Result<()> {
+    pub(crate) fn clear(&mut self) -> Result<()> {
         let mut key = K::default();
         let mut prev_key: *mut K = null_mut();
         unsafe {

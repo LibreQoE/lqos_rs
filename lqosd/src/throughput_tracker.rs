@@ -86,8 +86,7 @@ impl ThroughputTracker {
     }
 
     pub fn tick(&mut self) -> Result<()> {
-        let throughput = get_throughput_map()?;
-        let value_dump = throughput.dump_vec();
+        let value_dump = get_throughput_map()?;
 
         // Copy previous byte/packet numbers and reset RTT data
         self.raw_data.iter_mut().for_each(|(_k, v)| {

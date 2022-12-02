@@ -24,8 +24,8 @@ impl Default for HostCounter {
 }
 
 /// Queries the underlying `map_traffic` eBPF pinned map, and returns every entry.
-pub fn get_throughput_map() -> Result<BpfPerCpuMap<XdpIpAddress, HostCounter>> {
+pub fn get_throughput_map() -> Result<Vec<(XdpIpAddress, Vec<HostCounter>)>> {
     Ok(BpfPerCpuMap::<XdpIpAddress, HostCounter>::from_path(
         "/sys/fs/bpf/map_traffic",
-    )?)
+    )?.dump_vec())
 }
