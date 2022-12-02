@@ -111,7 +111,7 @@ fn main() {
             "r",
             &shrinkwrap_a,
             &shrinkwrap_lib,
-            "/usr/lib/x86_64-linux-gnu/libbpf.a",
+            //"/usr/lib/x86_64-linux-gnu/libbpf.a",
         ])
         .output();
     //command_warnings(&build_result);
