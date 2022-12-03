@@ -1,4 +1,5 @@
 #include "wrapper.h"
+#include "common/maximums.h"
 
 struct lqos_kern * lqos_kern_open() {
     return lqos_kern__open();
@@ -6,6 +7,10 @@ struct lqos_kern * lqos_kern_open() {
 
 int lqos_kern_load(struct lqos_kern * skel) {
     return lqos_kern__load(skel);
+}
+
+extern __u64 max_tracker_ips() {
+	return MAX_TRACKED_IPS;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////

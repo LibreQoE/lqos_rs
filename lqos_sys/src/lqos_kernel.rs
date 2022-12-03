@@ -16,6 +16,14 @@ mod bpf {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
 
+/// Returns the value set in the C XDP system's MAX_TRACKED_IPS
+/// constant.
+pub fn max_tracked_ips() -> usize {
+    (unsafe {
+        bpf::max_tracker_ips()
+     }) as usize
+}
+
 pub fn check_root() -> Result<()> {
     unsafe {
         if geteuid() == 0 {

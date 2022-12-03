@@ -21,3 +21,4 @@ pub use kernel_wrapper::LibreQoSKernels;
 pub use tcp_rtt::get_tcp_round_trip_times;
 pub use throughput::get_throughput_map;
 pub use xdp_ip_address::XdpIpAddress;
+pub use lqos_kernel::max_tracked_ips;
