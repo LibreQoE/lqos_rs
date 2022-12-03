@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use lqos_sys::{XdpIpAddress, get_throughput_map};
+use lqos_sys::{XdpIpAddress, HostCounter, RttTrackingEntry};
 use anyhow::Result;
 use super::throughput_entry::ThroughputEntry;
 
@@ -23,9 +23,7 @@ impl ThroughputTracker {
         }
     }
 
-    pub(crate) fn tick(&mut self) -> Result<()> {
-        let value_dump = get_throughput_map()?;
-
+    pub(crate) fn tick(&mut self, value_dump: &[(XdpIpAddress, Vec<HostCounter>)], rtt: Result<Vec<([u8; 16], RttTrackingEntry)>>) -> Result<()> {
         // Copy previous byte/packet numbers and reset RTT data
         self.raw_data.iter_mut().for_each(|(_k, v)| {
             if v.first_cycle < self.cycle {
@@ -78,7 +76,7 @@ impl ThroughputTracker {
         });
 
         // Apply RTT data
-        if let Ok(rtt_dump) = lqos_sys::get_tcp_round_trip_times() {
+        if let Ok(rtt_dump) = rtt {
             for (raw_ip, rtt) in rtt_dump {
                 if rtt.has_fresh_data != 0 {
                     let ip = XdpIpAddress(raw_ip);
