@@ -171,18 +171,6 @@ struct
 /* Functions */
 
 /*
- * Maps an IPv4 address into an IPv6 address according to RFC 4291 sec 2.5.5.2
- */
-static __always_inline void map_ipv4_to_ipv6(struct in6_addr *ipv6, __be32 ipv4)
-{
-    __builtin_memset(&ipv6->in6_u.u6_addr8[0], 0x00, 16);
-    __builtin_memcpy(&ipv6->in6_u.u6_addr32[3], &ipv4, sizeof(__u32));
-    //__builtin_memset(&ipv6->in6_u.u6_addr8[0], 0x00, 10);
-    //__builtin_memset(&ipv6->in6_u.u6_addr8[10], 0xff, 2);
-    //ipv6->in6_u.u6_addr32[3] = ipv4;
-}
-
-/*
  * Convenience function for getting the corresponding reverse flow.
  * PPing needs to keep track of flow in both directions, and sometimes
  * also needs to reverse the flow to report the "correct" (consistent
@@ -346,18 +334,14 @@ static __always_inline int parse_packet_identifier(struct parsing_context *conte
     if (context->dissector->eth_type == ETH_P_IP)
     {
         p_info->pid.flow.ipv = AF_INET;
-        map_ipv4_to_ipv6(&p_info->pid.flow.saddr.ip, context->dissector->ip_header.iph->saddr);
-        map_ipv4_to_ipv6(&p_info->pid.flow.daddr.ip, context->dissector->ip_header.iph->daddr);
+        p_info->pid.flow.saddr.ip = context->dissector->src_ip;
+        p_info->pid.flow.daddr.ip = context->dissector->dst_ip;
     }
     else if (context->dissector->eth_type == ETH_P_IPV6)
     {
         p_info->pid.flow.ipv = AF_INET6;
         p_info->pid.flow.saddr.ip = context->dissector->src_ip;
         p_info->pid.flow.daddr.ip = context->dissector->dst_ip;
-        // Broken
-        //__builtin_memcpy(&p_info->pid.flow.saddr.ip, &context->ip_header.ip6h->saddr, sizeof(struct in6_addr));
-        //__builtin_memcpy(&p_info->pid.flow.daddr.ip, &context->ip_header.ip6h->daddr, sizeof(struct in6_addr));
-        // TODO: No latency for IPv6 until I figure this out
     }
     else
     {

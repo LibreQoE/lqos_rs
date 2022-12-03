@@ -43,7 +43,7 @@ pub fn current_throughput() -> BusResponse {
 }
 
 pub fn top_n(n: u32) -> BusResponse {
-    let mut full_list: Vec<(XdpIpAddress, (u64, u64), (u64, u64), f32)> = {
+    let mut full_list: Vec<(XdpIpAddress, (u64, u64), (u64, u64), f32, u32)> = {
         let tp = THROUGHPUT_TRACKER.read();
         tp.raw_data
             .iter()
@@ -53,6 +53,7 @@ pub fn top_n(n: u32) -> BusResponse {
                     te.bytes_per_second,
                     te.packets_per_second,
                     te.median_latency(),
+                    te.tc_handle,
                 )
             })
             .collect()
@@ -62,11 +63,12 @@ pub fn top_n(n: u32) -> BusResponse {
         .iter()
         .take(n as usize)
         .map(
-            |(ip, (bytes_dn, bytes_up), (packets_dn, packets_up), median_rtt)| IpStats {
+            |(ip, (bytes_dn, bytes_up), (packets_dn, packets_up), median_rtt, tc_handle)| IpStats {
                 ip_address: ip.as_ip().to_string(),
                 bits_per_second: (bytes_dn * 8, bytes_up * 8),
                 packets_per_second: (*packets_dn, *packets_up),
                 median_tcp_rtt: *median_rtt,
+                tc_handle: *tc_handle,
             },
         )
         .collect();

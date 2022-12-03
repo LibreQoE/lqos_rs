@@ -6,6 +6,7 @@ pub struct IpStats {
     pub bits_per_second: (u64, u64),
     pub packets_per_second: (u64, u64),
     pub median_tcp_rtt: f32,
+    pub tc_handle: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

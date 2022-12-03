@@ -73,7 +73,7 @@ impl XdpIpAddress {
                 BigEndian::read_u16(&self.0[8..10]),
                 BigEndian::read_u16(&self.0[10..12]),
                 BigEndian::read_u16(&self.0[12..14]),
-                BigEndian::read_u16(&self.0[13..]),
+                BigEndian::read_u16(&self.0[14..]),
             ))
         }
     }

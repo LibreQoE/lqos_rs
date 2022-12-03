@@ -121,6 +121,14 @@ fn draw_pps<'a>(packets_per_second: (u64, u64), bits_per_second: (u64, u64)) -> 
     text
 }
 
+fn format_tc_handle(handle: u32) -> String {
+    if handle == 0 {
+        "-".to_string()
+    } else {
+        format!("{}:{}", (handle & 0xFFFF0000) << 16, handle & 0x0000FFFF)
+    }
+}
+
 fn draw_top_pane<'a>(
     top: &[IpStats],
     packets_per_second: (u64, u64),
@@ -136,6 +144,7 @@ fn draw_top_pane<'a>(
                 Cell::from(format!("🠗 {}", scale_packets(stats.packets_per_second.0))),
                 Cell::from(format!("🠕 {}", scale_packets(stats.packets_per_second.1))),
                 Cell::from(format!("{:.2} ms", stats.median_tcp_rtt)),
+                Cell::from(format_tc_handle(stats.tc_handle)),
             ])
         })
         .collect();
@@ -147,6 +156,7 @@ fn draw_top_pane<'a>(
         "Pkts Dn",
         "Pkts Up",
         "TCP RTT ms",
+        "Shaper"
     ])
     .style(Style::default().fg(Color::Yellow));
 
@@ -164,6 +174,7 @@ fn draw_top_pane<'a>(
             Constraint::Length(15),
             Constraint::Length(15),
             Constraint::Length(11),
+            Constraint::Length(7),
         ])
 }
 
