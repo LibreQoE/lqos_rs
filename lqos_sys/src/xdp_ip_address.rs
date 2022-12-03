@@ -32,8 +32,8 @@ impl XdpIpAddress {
             IpAddr::V6(ip) => {
                 for i in 0..8 {
                     let base = i * 2;
-                    result.0[base + 1] = ip.octets()[base];
-                    result.0[base] = ip.octets()[base + 1];
+                    result.0[base] = ip.octets()[base];
+                    result.0[base+1] = ip.octets()[base + 1];
                 }
             }
         }
@@ -88,5 +88,44 @@ impl Into<IpAddr> for XdpIpAddress {
 impl From<IpAddr> for XdpIpAddress {
     fn from(ip: IpAddr) -> Self {
         Self::from_ip(ip)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_default_xdp_ip() {
+        let default = XdpIpAddress::default();
+        assert_eq!(default.0, [0xFF; 16]);
+    }
+
+    #[test]
+    fn test_from_ipv4() {
+        let ip = XdpIpAddress::from_ip("1.2.3.4".parse().unwrap());
+        for n in 0..12 {
+            assert_eq!(ip.0[n], 0xFF);
+        }
+        assert_eq!(ip.0[12], 1);
+        assert_eq!(ip.0[13], 2);
+        assert_eq!(ip.0[14], 3);
+        assert_eq!(ip.0[15], 4);
+    }
+
+    #[test]
+    fn test_to_ipv4() {
+        let raw_ip = XdpIpAddress([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 1, 2, 3, 4]);
+        let ip = raw_ip.as_ip();
+        let intended_ip : IpAddr = "1.2.3.4".parse().unwrap();
+        assert_eq!(ip, intended_ip);
+    }
+
+    #[test]
+    fn test_ipv6_round_trip() {
+        let ipv6 = IpAddr::V6("2001:db8:85a3::8a2e:370:7334".parse().unwrap());
+        let xip = XdpIpAddress::from_ip(ipv6);
+        let test = xip.as_ip();
+        assert_eq!(ipv6, test);
     }
 }

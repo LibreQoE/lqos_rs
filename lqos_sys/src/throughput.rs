@@ -5,10 +5,19 @@ use anyhow::Result;
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub struct HostCounter {
+    /// Download bytes counter (keeps incrementing)
     pub download_bytes: u64,
+
+    /// Upload bytes counter (keeps incrementing)
     pub upload_bytes: u64,
+
+    /// Download packets counter (keeps incrementing)
     pub download_packets: u64,
+
+    /// Upload packets counter (keeps incrementing)
     pub upload_packets: u64,
+
+    /// Mapped TC handle, 0 if there isn't one.
     pub tc_handle: u32,
 }
 
