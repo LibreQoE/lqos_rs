@@ -1,6 +1,7 @@
 use crate::{bpf_per_cpu_map::BpfPerCpuMap, XdpIpAddress};
 use anyhow::Result;
 
+/// Representation of the XDP map from map_traffic
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub struct HostCounter {

@@ -2,6 +2,7 @@ use anyhow::Result;
 
 use crate::bpf_map::BpfMap;
 
+/// Entry from the XDP rtt_tracker map.
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct RttTrackingEntry {
