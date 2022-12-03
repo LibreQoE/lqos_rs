@@ -34,7 +34,10 @@ impl ThroughputTracker {
                 v.prev_bytes = v.bytes;
                 v.prev_packets = v.packets;
             }
-            //v.recent_rtt_data = [0; 60];
+            // Roll out stale RTT data
+            if self.cycle > 30 && v.last_fresh_rtt_data_cycle < self.cycle - 30 {
+                v.recent_rtt_data = [0; 60];
+            }
         });
 
         value_dump.iter().for_each(|(xdp_ip, counts)| {
@@ -61,6 +64,7 @@ impl ThroughputTracker {
                     packets_per_second: (0, 0),
                     tc_handle: 0,
                     recent_rtt_data: [0; 60],
+                    last_fresh_rtt_data_cycle: 0,
                 };
                 for c in counts {
                     entry.bytes.0 += c.download_bytes;
@@ -82,6 +86,7 @@ impl ThroughputTracker {
                     let ip = XdpIpAddress(raw_ip);
                     if let Some(tracker) = self.raw_data.get_mut(&ip) {
                         tracker.recent_rtt_data = rtt.rtt;
+                        tracker.last_fresh_rtt_data_cycle = self.cycle;
                     }
                 }
             }
