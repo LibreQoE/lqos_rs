@@ -137,6 +137,13 @@ fn draw_top_pane<'a>(
     let rows: Vec<Row> = top
         .iter()
         .map(|stats| {
+            let color = if stats.bits_per_second.0 < 500 {
+                Color::DarkGray
+            } else if stats.tc_handle == 0 {
+                Color::Cyan
+            } else {
+                Color::LightGreen
+            };
             Row::new(vec![
                 Cell::from(stats.ip_address.clone()),
                 Cell::from(format!("🠗 {}", scale_bits(stats.bits_per_second.0))),
@@ -145,7 +152,7 @@ fn draw_top_pane<'a>(
                 Cell::from(format!("🠕 {}", scale_packets(stats.packets_per_second.1))),
                 Cell::from(format!("{:.2} ms", stats.median_tcp_rtt)),
                 Cell::from(format_tc_handle(stats.tc_handle)),
-            ])
+            ]).style(Style::default().fg(color))
         })
         .collect();
 
