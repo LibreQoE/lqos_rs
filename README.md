@@ -24,6 +24,8 @@ This project contains a number of projects arranged in a workspace. The projects
 * `libbpf-dev`
 * `gcc-multilib`
 * `llvm`
+* `pkg-config`
+* `linux-tools-5.15.0-56-generic` (the common version doesn't work?)
 
 ## Helper Scripts
 
