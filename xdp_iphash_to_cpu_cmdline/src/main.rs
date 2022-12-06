@@ -32,11 +32,19 @@ enum Commands {
         /// CPU id to connect
         #[arg(long)]
         cpu: String,
+
+        /// Add "--upload 1" if you are using on-a-stick and need to map upload separately
+        #[arg(long)]
+        upload: Option<String>
     },
     /// Remove an IP address (v4 or v6) from the XDP/TC mapping system.
     Del {
         /// IP Address (v4 or v6) to remove
         ip: String,
+
+        /// Add "--upload 1" if you are using on-a-stick and need to map upload separately
+        #[arg(long)]
+        upload: Option<String>
     },
     /// Clear all mapped IPs.
     Clear,
@@ -86,7 +94,7 @@ fn print_ips(ips: &[IpMapping]) {
     println!("");
 }
 
-fn parse_add_ip(ip: &str, classid: &str, cpu: &str) -> Result<BusRequest> {
+fn parse_add_ip(ip: &str, classid: &str, cpu: &str, upload: &Option<String>) -> Result<BusRequest> {
     if ip.parse::<IpAddr>().is_err() {
         return Err(Error::msg("Unable to parse IP address"));
     }
@@ -99,6 +107,7 @@ fn parse_add_ip(ip: &str, classid: &str, cpu: &str) -> Result<BusRequest> {
         ip_address: ip.to_string(),
         tc_handle: TcHandle::from_string(classid)?,
         cpu: cpu.parse()?,
+        upload: upload.is_some(),
     })
 }
 
@@ -107,12 +116,13 @@ pub async fn main() -> Result<()> {
     let cli = Args::parse();
 
     match cli.command {
-        Some(Commands::Add { ip, classid, cpu }) => {
-            talk_to_server(parse_add_ip(&ip, &classid, &cpu)?).await?;
+        Some(Commands::Add { ip, classid, cpu, upload }) => {
+            talk_to_server(parse_add_ip(&ip, &classid, &cpu, &upload)?).await?;
         }
-        Some(Commands::Del { ip }) => {
+        Some(Commands::Del { ip , upload }) => {
             talk_to_server(BusRequest::DelIpFlow {
                 ip_address: ip.to_string(),
+                upload: upload.is_some(),
             })
             .await?
         }

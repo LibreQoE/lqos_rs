@@ -22,9 +22,11 @@ pub enum BusRequest {
         ip_address: String,
         tc_handle: TcHandle,
         cpu: u32,
+        upload: bool,
     },
     DelIpFlow {
         ip_address: String,
+        upload: bool,
     },
     ClearIpFlow,
     ListIpFlow,

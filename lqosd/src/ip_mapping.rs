@@ -14,16 +14,18 @@ pub(crate) fn map_ip_to_flow(
     ip_address: &str,
     tc_handle: &TcHandle,
     cpu: u32,
+    upload: bool,
 ) -> BusResponse {
     expect_ack(lqos_sys::add_ip_to_tc(
         &ip_address,
         *tc_handle,
         cpu,
+        upload,
     ))
 }
 
-pub(crate) fn del_ip_flow(ip_address: &str) -> BusResponse {
-    expect_ack(lqos_sys::del_ip_from_tc(ip_address))
+pub(crate) fn del_ip_flow(ip_address: &str, upload: bool) -> BusResponse {
+    expect_ack(lqos_sys::del_ip_from_tc(ip_address, upload))
 }
 
 pub(crate) fn clear_ip_flows() -> BusResponse {
