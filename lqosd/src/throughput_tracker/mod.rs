@@ -1,7 +1,7 @@
 mod tracking_data;
 mod throughput_entry;
 use lazy_static::*;
-use lqos_bus::{BusResponse, IpStats, XdpPpingResult};
+use lqos_bus::{BusResponse, IpStats, XdpPpingResult, TcHandle};
 use lqos_sys::{XdpIpAddress, get_throughput_map};
 use parking_lot::RwLock;
 use std::time::Duration;
@@ -43,7 +43,7 @@ pub fn current_throughput() -> BusResponse {
 }
 
 pub fn top_n(n: u32) -> BusResponse {
-    let mut full_list: Vec<(XdpIpAddress, (u64, u64), (u64, u64), f32, u32)> = {
+    let mut full_list: Vec<(XdpIpAddress, (u64, u64), (u64, u64), f32, TcHandle)> = {
         let tp = THROUGHPUT_TRACKER.read();
         tp.raw_data
             .iter()
@@ -80,7 +80,7 @@ pub fn xdp_pping_compat() -> BusResponse {
     let result = raw.raw_data
         .iter()
         .filter_map(|(_ip, data)| {
-            if data.tc_handle > 0 {
+            if data.tc_handle.as_u32() > 0 {
                 let mut valid_samples : Vec<u32> = data.recent_rtt_data.iter().filter(|d| **d > 0).map(|d| *d).collect();
                 let samples = valid_samples.len() as u32;
                 if samples > 0 {
@@ -92,7 +92,7 @@ pub fn xdp_pping_compat() -> BusResponse {
                     let avg = sum / samples as f32;
 
                     Some(XdpPpingResult {
-                        tc: format!("{}:{}", (data.tc_handle & 0xFFFF0000) >> 16, data.tc_handle & 0x0000FFFF),
+                        tc: format!("{}", data.tc_handle.to_string()),
                         median,
                         avg,
                         max,

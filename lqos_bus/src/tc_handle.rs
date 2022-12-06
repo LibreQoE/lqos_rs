@@ -45,8 +45,16 @@ impl TcHandle {
         }
     }
 
+    pub fn from_u32(tc: u32) -> Self {
+        Self(tc)
+    }
+
     pub fn as_u32(&self) -> u32 {
         self.0
+    }
+
+    pub fn zero() -> Self {
+        Self(0)
     }
 }
 

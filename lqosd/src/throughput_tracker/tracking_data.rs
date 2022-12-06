@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use lqos_bus::TcHandle;
 use lqos_sys::{XdpIpAddress, HostCounter, RttTrackingEntry};
 use anyhow::Result;
 use super::throughput_entry::ThroughputEntry;
@@ -50,7 +51,7 @@ impl ThroughputTracker {
                     entry.packets.0 += c.download_packets;
                     entry.packets.1 += c.upload_packets;
                     if c.tc_handle != 0 {
-                        entry.tc_handle = c.tc_handle;
+                        entry.tc_handle = TcHandle::from_u32(c.tc_handle);
                     }
                 }
             } else {
@@ -62,7 +63,7 @@ impl ThroughputTracker {
                     prev_packets: (0, 0),
                     bytes_per_second: (0, 0),
                     packets_per_second: (0, 0),
-                    tc_handle: 0,
+                    tc_handle: TcHandle::zero(),
                     recent_rtt_data: [0; 60],
                     last_fresh_rtt_data_cycle: 0,
                 };
@@ -72,7 +73,7 @@ impl ThroughputTracker {
                     entry.packets.0 += c.download_packets;
                     entry.packets.1 += c.upload_packets;
                     if c.tc_handle != 0 {
-                        entry.tc_handle = c.tc_handle;
+                        entry.tc_handle = TcHandle::from_u32(c.tc_handle);
                     }
                 }
                 self.raw_data.insert(*xdp_ip, entry);

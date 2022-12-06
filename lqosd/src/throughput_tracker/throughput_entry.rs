@@ -1,3 +1,5 @@
+use lqos_bus::TcHandle;
+
 #[derive(Debug)]
 pub(crate) struct ThroughputEntry {
     pub(crate) first_cycle: u64,
@@ -7,7 +9,7 @@ pub(crate) struct ThroughputEntry {
     pub(crate) prev_packets: (u64, u64),
     pub(crate) bytes_per_second: (u64, u64),
     pub(crate) packets_per_second: (u64, u64),
-    pub(crate) tc_handle: u32,
+    pub(crate) tc_handle: TcHandle,
     pub(crate) recent_rtt_data: [u32; 60],
     pub(crate) last_fresh_rtt_data_cycle: u64,
 }

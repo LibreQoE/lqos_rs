@@ -78,10 +78,9 @@ fn print_ips(ips: &[IpMapping]) {
         } else {
             format!("{}/{}", ip.ip_address, ip.prefix_length - 96)
         };
-        let (major, minor) = ((ip.tc_handle & 0xFFFF0000) >> 16, ip.tc_handle & 0x0000FFFF);
         println!(
-            "{:<45} CPU: {:<4} TC: {}:{}",
-            ip_formatted, ip.cpu, major, minor
+            "{:<45} CPU: {:<4} TC: {}",
+            ip_formatted, ip.cpu, ip.tc_handle.to_string()
         );
     }
     println!("");

@@ -121,14 +121,6 @@ fn draw_pps<'a>(packets_per_second: (u64, u64), bits_per_second: (u64, u64)) -> 
     text
 }
 
-fn format_tc_handle(handle: u32) -> String {
-    if handle == 0 {
-        "-".to_string()
-    } else {
-        format!("{}:{}", (handle & 0xFFFF0000) << 16, handle & 0x0000FFFF)
-    }
-}
-
 fn draw_top_pane<'a>(
     top: &[IpStats],
     packets_per_second: (u64, u64),
@@ -139,7 +131,7 @@ fn draw_top_pane<'a>(
         .map(|stats| {
             let color = if stats.bits_per_second.0 < 500 {
                 Color::DarkGray
-            } else if stats.tc_handle == 0 {
+            } else if stats.tc_handle.as_u32() == 0 {
                 Color::Cyan
             } else {
                 Color::LightGreen
@@ -151,7 +143,7 @@ fn draw_top_pane<'a>(
                 Cell::from(format!("🠗 {}", scale_packets(stats.packets_per_second.0))),
                 Cell::from(format!("🠕 {}", scale_packets(stats.packets_per_second.1))),
                 Cell::from(format!("{:.2} ms", stats.median_tcp_rtt)),
-                Cell::from(format_tc_handle(stats.tc_handle)),
+                Cell::from(stats.tc_handle.to_string()),
             ]).style(Style::default().fg(color))
         })
         .collect();
