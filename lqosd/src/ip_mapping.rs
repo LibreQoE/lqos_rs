@@ -1,5 +1,5 @@
 use anyhow::Result;
-use lqos_bus::{BusResponse, IpMapping};
+use lqos_bus::{BusResponse, IpMapping, TcHandle};
 use lqos_sys::XdpIpAddress;
 
 fn expect_ack(result: Result<()>) -> BusResponse {
@@ -12,13 +12,12 @@ fn expect_ack(result: Result<()>) -> BusResponse {
 
 pub(crate) fn map_ip_to_flow(
     ip_address: &str,
-    tc_major: u16,
-    tc_minor: u16,
+    tc_handle: &TcHandle,
     cpu: u32,
 ) -> BusResponse {
     expect_ack(lqos_sys::add_ip_to_tc(
         &ip_address,
-        (tc_major, tc_minor),
+        *tc_handle,
         cpu,
     ))
 }

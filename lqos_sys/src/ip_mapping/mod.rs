@@ -1,4 +1,5 @@
 use anyhow::Result;
+use lqos_bus::TcHandle;
 use std::net::IpAddr;
 use crate::{bpf_map::BpfMap, XdpIpAddress};
 mod ip_to_map;
@@ -15,7 +16,7 @@ use ip_hash_key::IpHashKey;
 /// * `address` - a string containing an IPv4 or IPv6 address, with or without a prefix-length.
 /// * `tc_handle` - the TC classifier handle to associate with the IP address, in (major,minor) format.
 /// * `cpu` - the CPU index on which the TC class should be handled.
-pub fn add_ip_to_tc(address: &str, tc_handle: (u16, u16), cpu: u32) -> Result<()> {
+pub fn add_ip_to_tc(address: &str, tc_handle: TcHandle, cpu: u32) -> Result<()> {
     let ip_to_add = IpToMap::new(address, tc_handle, cpu)?;
     let mut bpf_map =
         BpfMap::<IpHashKey, IpHashData>::from_path("/sys/fs/bpf/map_ip_to_cpu_and_tc")?;
@@ -38,7 +39,7 @@ pub fn add_ip_to_tc(address: &str, tc_handle: (u16, u16), cpu: u32) -> Result<()
 /// 
 /// * `address` - the IP address to remove. If no prefix (e.g. `/24`) is provided, the longest prefix to match a single IP address will be assumed.
 pub fn del_ip_from_tc(address: &str) -> Result<()> {
-    let ip_to_add = IpToMap::new(address, (0, 0), 0)?;
+    let ip_to_add = IpToMap::new(address, TcHandle::from_string("0:0")?, 0)?;
     let mut bpf_map =
         BpfMap::<IpHashKey, IpHashData>::from_path("/sys/fs/bpf/map_ip_to_cpu_and_tc")?;
     let ip = address.parse::<IpAddr>()?;

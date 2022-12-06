@@ -2,6 +2,8 @@ mod ip_stats;
 use anyhow::Result;
 pub use ip_stats::{IpMapping, IpStats, XdpPpingResult};
 use serde::{Deserialize, Serialize};
+mod tc_handle;
+pub use tc_handle::TcHandle;
 
 pub const BUS_BIND_ADDRESS: &str = "127.0.0.1:9999";
 
@@ -18,8 +20,7 @@ pub enum BusRequest {
     GetTopNDownloaders(u32),
     MapIpToFlow {
         ip_address: String,
-        tc_major: u16,
-        tc_minor: u16,
+        tc_handle: TcHandle,
         cpu: u32,
     },
     DelIpFlow {

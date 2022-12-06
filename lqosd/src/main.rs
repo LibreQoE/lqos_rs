@@ -59,10 +59,9 @@ async fn main() -> Result<()> {
                             BusRequest::GetTopNDownloaders(n) => throughput_tracker::top_n(*n),
                             BusRequest::MapIpToFlow {
                                 ip_address,
-                                tc_major,
-                                tc_minor,
+                                tc_handle,
                                 cpu,
-                            } => map_ip_to_flow(ip_address, *tc_major, *tc_minor, *cpu),
+                            } => map_ip_to_flow(ip_address, tc_handle, *cpu),
                             BusRequest::DelIpFlow { ip_address } => del_ip_flow(&ip_address),
                             BusRequest::ClearIpFlow => clear_ip_flows(),
                             BusRequest::ListIpFlow => list_mapped_ips(),

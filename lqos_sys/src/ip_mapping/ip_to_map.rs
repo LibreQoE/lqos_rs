@@ -1,15 +1,16 @@
 use std::net::{IpAddr, Ipv6Addr, Ipv4Addr};
 use anyhow::{Result, Error};
+use lqos_bus::TcHandle;
 
 pub(crate) struct IpToMap {
     pub(crate) subnet: IpAddr,
     pub(crate) prefix: u32,
-    pub(crate) tc_handle: (u16, u16),
+    pub(crate) tc_handle: TcHandle,
     pub(crate) cpu: u32,
 }
 
 impl IpToMap {
-    pub(crate) fn new(address: &str, tc_handle: (u16, u16), cpu: u32) -> Result<Self> {
+    pub(crate) fn new(address: &str, tc_handle: TcHandle, cpu: u32) -> Result<Self> {
         let address_part; // Filled in later
         let mut subnet_part = 128;
         if address.contains("/") {
@@ -46,7 +47,7 @@ impl IpToMap {
     }
 
     pub(crate) fn handle(&self) -> u32 {
-        (self.tc_handle.0 as u32) << 16 | self.tc_handle.1 as u32
+        self.tc_handle.as_u32()
     }
 }
 
@@ -56,71 +57,71 @@ mod test {
 
     #[test]
     fn parse_ipv4_single() {
-        let map = IpToMap::new("1.2.3.4", (1, 2), 1).unwrap();
+        let map = IpToMap::new("1.2.3.4", TcHandle::from_string("1:2").unwrap(), 1).unwrap();
         let rust_ip : IpAddr = "1.2.3.4".parse().unwrap();
         assert_eq!(rust_ip, map.subnet);
         assert_eq!(map.prefix, 128);
-        assert_eq!(map.tc_handle, (1, 2));
+        assert_eq!(map.tc_handle.to_string(), "1:2");
         assert_eq!(map.cpu, 1);
     }
 
     #[test]
     fn parse_ipv4_subnet() {
-        let map = IpToMap::new("1.2.3.0/24", (1, 2), 1).unwrap();
+        let map = IpToMap::new("1.2.3.0/24", TcHandle::from_string("1:2").unwrap(), 1).unwrap();
         let rust_ip : IpAddr = "1.2.3.0".parse().unwrap();
         assert_eq!(rust_ip, map.subnet);
         assert_eq!(map.prefix, 24+96);
-        assert_eq!(map.tc_handle, (1, 2));
+        assert_eq!(map.tc_handle.to_string(), "1:2");
         assert_eq!(map.cpu, 1);
     }
 
     #[test]
     fn parse_ipv4_invalid_ip() {
-        let map = IpToMap::new("1.2.3.256/24", (1, 2), 1);
+        let map = IpToMap::new("1.2.3.256/24", TcHandle::from_string("1:2").unwrap(), 1);
         assert!(map.is_err());
     }
 
     #[test]
     fn parse_ipv4_super_invalid_ip() {
-        let map = IpToMap::new("I like sheep", (1, 2), 1);
+        let map = IpToMap::new("I like sheep", TcHandle::from_string("1:2").unwrap(), 1);
         assert!(map.is_err());
     }
 
     #[test]
     fn parse_ipv4_invalid_cidr() {
-        let map = IpToMap::new("1.2.3.256/33", (1, 2), 1);
+        let map = IpToMap::new("1.2.3.256/33", TcHandle::from_string("1:2").unwrap(), 1);
         assert!(map.is_err());
     }
 
     #[test]
     fn parse_ipv4_negative_cidr() {
-        let map = IpToMap::new("1.2.3.256/-1", (1, 2), 1);
+        let map = IpToMap::new("1.2.3.256/-1", TcHandle::from_string("1:2").unwrap(), 1);
         assert!(map.is_err());
     }
 
     #[test]
     fn parse_ipv6_single() {
-        let map = IpToMap::new("dead::beef", (1, 2), 1).unwrap();
+        let map = IpToMap::new("dead::beef", TcHandle::from_string("1:2").unwrap(), 1).unwrap();
         let rust_ip : IpAddr = "dead::beef".parse().unwrap();
         assert_eq!(rust_ip, map.subnet);
         assert_eq!(map.prefix, 128);
-        assert_eq!(map.tc_handle, (1, 2));
+        assert_eq!(map.tc_handle.to_string(), "1:2");
         assert_eq!(map.cpu, 1);
     }
 
     #[test]
     fn parse_ipv6_subnet() {
-        let map = IpToMap::new("dead:beef::/64", (1, 2), 1).unwrap();
+        let map = IpToMap::new("dead:beef::/64", TcHandle::from_string("1:2").unwrap(), 1).unwrap();
         let rust_ip : IpAddr = "dead:beef::".parse().unwrap();
         assert_eq!(rust_ip, map.subnet);
         assert_eq!(map.prefix, 64);
-        assert_eq!(map.tc_handle, (1, 2));
+        assert_eq!(map.tc_handle.to_string(), "1:2");
         assert_eq!(map.cpu, 1);
     }
 
     #[test]
     fn parse_ipv6_invalid_ip() {
-        let map = IpToMap::new("dead:beef", (1, 2), 1);
+        let map = IpToMap::new("dead:beef", TcHandle::from_string("1:2").unwrap(), 1);
         assert!(map.is_err());
     }
 }

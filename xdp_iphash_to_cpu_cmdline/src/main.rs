@@ -2,7 +2,7 @@ use anyhow::{Error, Result};
 use clap::{Parser, Subcommand};
 use lqos_bus::{
     decode_response, encode_request, BusRequest, BusResponse, BusSession, IpMapping,
-    BUS_BIND_ADDRESS,
+    BUS_BIND_ADDRESS, TcHandle,
 };
 use std::{net::IpAddr, process::exit};
 use tokio::{
@@ -96,11 +96,9 @@ fn parse_add_ip(ip: &str, classid: &str, cpu: &str) -> Result<BusRequest> {
             "Class id must be in the format (major):(minor), e.g. 1:12",
         ));
     }
-    let split_class: Vec<&str> = classid.split(":").collect();
     Ok(BusRequest::MapIpToFlow {
         ip_address: ip.to_string(),
-        tc_major: split_class[0].parse()?,
-        tc_minor: split_class[1].parse()?,
+        tc_handle: TcHandle::from_string(classid)?,
         cpu: cpu.parse()?,
     })
 }
