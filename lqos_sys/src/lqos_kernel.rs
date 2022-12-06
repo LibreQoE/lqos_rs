@@ -91,6 +91,7 @@ unsafe fn load_kernel(skeleton: *mut bpf::lqos_kern) -> Result<()> {
 pub enum InterfaceDirection {
     Internet,
     IspNetwork,
+    OnAStick(u16, u16),
 }
 
 pub fn attach_xdp_and_tc_to_interface(
@@ -106,7 +107,12 @@ pub fn attach_xdp_and_tc_to_interface(
         (*(*skeleton).data).direction = match direction {
             InterfaceDirection::Internet => 1,
             InterfaceDirection::IspNetwork => 2,
+            InterfaceDirection::OnAStick(..) => 3,
         };
+        if let InterfaceDirection::OnAStick(internet, isp) = direction {
+            (*(*skeleton).bss).internet_vlan = internet.to_be();
+            (*(*skeleton).bss).isp_vlan = isp.to_be();
+        }
         load_kernel(skeleton)?;
         let _ = unload_xdp_from_interface(interface_name); // Ignoring error, it's ok if there isn't one
         let prog_fd = bpf::bpf_program__fd((*skeleton).progs.xdp_prog);

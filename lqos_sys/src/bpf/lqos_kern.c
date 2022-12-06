@@ -20,8 +20,11 @@
 // Constant passed in during loading to either
 // 1 (facing the Internet)
 // 2 (facing the LAN)
+// 3 (use VLAN mode, we're running on a stick)
 // If it stays at 255, we have a configuration error.
 int direction = 255;
+__be16 internet_vlan = 0; // Note: turn these into big-endian
+__be16 isp_vlan = 0;
 
 SEC("xdp")
 int xdp_prog(struct xdp_md *ctx)
@@ -31,13 +34,17 @@ int xdp_prog(struct xdp_md *ctx)
         return XDP_PASS;
     }
     struct dissector_t dissector = {0};
+    //bpf_debug("Running mode %u", direction);
+    //bpf_debug("Scan VLANs: %u %u", internet_vlan, isp_vlan);
     if (!dissector_new(ctx, &dissector)) return XDP_PASS;
     if (!dissector_find_l3_offset(&dissector)) return XDP_PASS;
     if (!dissector_find_ip_header(&dissector)) return XDP_PASS;
+    //bpf_debug("Spotted VLAN: %u", dissector.current_vlan);
 
     // Determine the lookup key by direction
     struct ip_hash_key lookup_key;
-    struct ip_hash_info * ip_info = setup_lookup_key_and_tc_cpu(direction, &lookup_key, &dissector);
+    int effective_direction = 0;
+    struct ip_hash_info * ip_info = setup_lookup_key_and_tc_cpu(direction, &lookup_key, &dissector, internet_vlan, &effective_direction);
 
     __u32 tc_handle = 0;
     __u32 cpu = 0;
@@ -45,7 +52,7 @@ int xdp_prog(struct xdp_md *ctx)
         tc_handle = ip_info->tc_handle;
         cpu = ip_info->cpu;
     }
-    track_traffic(direction, &lookup_key.address, ctx->data_end - ctx->data, tc_handle);
+    track_traffic(effective_direction, &lookup_key.address, ctx->data_end - ctx->data, tc_handle);
 
     // Send on its way
     if (tc_handle != 0) {
@@ -86,7 +93,8 @@ int tc_iphash_to_cpu(struct __sk_buff *skb)
 
     // Determine the lookup key by direction
     struct ip_hash_key lookup_key;
-    struct ip_hash_info * ip_info = tc_setup_lookup_key_and_tc_cpu(direction, &lookup_key, &dissector);
+    int effective_direction = 0;
+    struct ip_hash_info * ip_info = tc_setup_lookup_key_and_tc_cpu(direction, &lookup_key, &dissector, internet_vlan, &effective_direction);
 
     // Temporary pping integration - needs a lot of cleaning
     struct parsing_context context = {0};

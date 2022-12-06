@@ -38,11 +38,19 @@ struct {
 static __always_inline struct ip_hash_info * setup_lookup_key_and_tc_cpu(
     int direction, 
     struct ip_hash_key * lookup_key, 
-    struct dissector_t * dissector
+    struct dissector_t * dissector,
+    __be16 internet_vlan,
+    int * out_effective_direction
 ) 
 {
     lookup_key->prefixlen = 128;
-    lookup_key->address = (direction == 1) ? dissector->dst_ip : dissector->src_ip;
+    if (direction < 3) {
+        lookup_key->address = (direction == 1) ? dissector->dst_ip : dissector->src_ip;
+        *out_effective_direction = direction;
+    } else {
+        lookup_key->address = (dissector->current_vlan == internet_vlan) ? dissector->dst_ip : dissector->src_ip;
+        *out_effective_direction = (dissector->current_vlan == internet_vlan) ? 1 : 2;
+    }
     struct ip_hash_info * ip_info = bpf_map_lookup_elem(&map_ip_to_cpu_and_tc, lookup_key);
     return ip_info;
 }
@@ -50,12 +58,20 @@ static __always_inline struct ip_hash_info * setup_lookup_key_and_tc_cpu(
 static __always_inline struct ip_hash_info * tc_setup_lookup_key_and_tc_cpu(
     int direction, 
     struct ip_hash_key * lookup_key, 
-    struct tc_dissector_t * dissector
+    struct tc_dissector_t * dissector,
+    __be16 internet_vlan,
+    int * out_effective_direction
 ) 
 {
     lookup_key->prefixlen = 128;
 	// Direction is reversed because we are operating on egress
-    lookup_key->address = (direction == 1) ? dissector->src_ip : dissector->dst_ip;
+    if (direction < 3) {
+        lookup_key->address = (direction == 1) ? dissector->src_ip : dissector->dst_ip;
+        *out_effective_direction = direction;
+    } else {
+        lookup_key->address = (dissector->current_vlan == internet_vlan) ? dissector->src_ip : dissector->dst_ip;
+        *out_effective_direction = (dissector->current_vlan == internet_vlan) ? 2 : 1;
+    }
     struct ip_hash_info * ip_info = bpf_map_lookup_elem(&map_ip_to_cpu_and_tc, lookup_key);
     return ip_info;
 }

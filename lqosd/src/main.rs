@@ -17,7 +17,15 @@ use tokio::{
 async fn main() -> Result<()> {
     println!("LibreQoS Daemon Starting");
     let config = LibreQoSConfig::load_from_default()?;
-    let kernels = LibreQoSKernels::new(&config.internet_interface, &config.isp_interface)?;
+    let kernels = if config.on_a_stick_mode {
+        // Hack: Turn off RXVLAN
+        std::process::Command::new("ethtool")
+            .args(["-K", &config.internet_interface, "rxvlan", "off"])
+            .output()?;
+        LibreQoSKernels::on_a_stick_mode(&config.internet_interface, config.stick_vlans.1, config.stick_vlans.0)?
+    } else {
+        LibreQoSKernels::new(&config.internet_interface, &config.isp_interface)?
+    };
     throughput_tracker::spawn_throughput_monitor().await;
 
     let mut signals = Signals::new(&[SIGINT])?;

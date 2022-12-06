@@ -6,6 +6,8 @@ const DEFAULT_DIR: &str = "/opt/libreqos/v1.3/ispConfig.py";
 pub struct LibreQoSConfig {
     pub internet_interface: String,
     pub isp_interface: String,
+    pub on_a_stick_mode: bool,
+    pub stick_vlans: (u16, u16),
 }
 
 impl LibreQoSConfig {
@@ -19,6 +21,8 @@ impl LibreQoSConfig {
         let mut result = Self {
             internet_interface: String::new(),
             isp_interface: String::new(),
+            on_a_stick_mode: false,
+            stick_vlans: (0,0),
         };
         result.parse_isp_config(path)?;
         Ok(result)
@@ -34,6 +38,8 @@ impl LibreQoSConfig {
         let mut result = Self {
             internet_interface: String::new(),
             isp_interface: String::new(),
+            on_a_stick_mode: false,
+            stick_vlans: (0,0),
         };
         result.parse_isp_config(path)?;
         Ok(result)
@@ -47,6 +53,22 @@ impl LibreQoSConfig {
             }
             if line.starts_with("interfaceB") {
                 self.internet_interface = split_at_equals(line);
+            }
+            if line.starts_with("OnAStick") {
+                let mode = split_at_equals(line);
+                if mode == "True" {
+                    self.on_a_stick_mode = true;
+                }
+            }
+            if line.starts_with("StickVlanA") {
+                let vlan_string = split_at_equals(line);
+                let vlan : u16 = vlan_string.parse()?;
+                self.stick_vlans.0 = vlan;
+            }
+            if line.starts_with("StickVlanB") {
+                let vlan_string = split_at_equals(line);
+                let vlan : u16 = vlan_string.parse()?;
+                self.stick_vlans.1 = vlan;
             }
         }
         Ok(())

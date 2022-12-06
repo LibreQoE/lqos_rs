@@ -21,6 +21,7 @@ struct tc_dissector_t
     union iph_ptr ip_header;
     struct in6_addr src_ip;
     struct in6_addr dst_ip;
+    __be16 current_vlan;
 };
 
 // Constructor for a dissector
@@ -37,6 +38,7 @@ static __always_inline bool tc_dissector_new(struct __sk_buff *ctx, struct tc_di
     dissector->end = (void *)(long)ctx->data_end;
     dissector->ethernet_header = (struct ethhdr *)NULL;
     dissector->l3offset = 0;
+    dissector->current_vlan = 0;
 
     // Check that there's room for an ethernet header
     if SKB_OVERFLOW (dissector->start, dissector->end, ethhdr)
@@ -87,6 +89,7 @@ static __always_inline bool tc_dissector_find_l3_offset(struct tc_dissector_t *d
                 return false;
             }
             struct vlan_hdr *vlan = (struct vlan_hdr *)(dissector->start + offset);
+            dissector->current_vlan = vlan->h_vlan_TCI;
             eth_type = bpf_ntohs(vlan->h_vlan_encapsulated_proto);
             offset += sizeof(struct vlan_hdr);
         }
