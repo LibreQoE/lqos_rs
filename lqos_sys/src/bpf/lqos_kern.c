@@ -34,9 +34,9 @@ int xdp_prog(struct xdp_md *ctx)
         return XDP_PASS;
     }
     struct dissector_t dissector = {0};
-    bpf_debug("START XDP");
-    bpf_debug("Running mode %u", direction);
-    bpf_debug("Scan VLANs: %u %u", internet_vlan, isp_vlan);
+    //bpf_debug("START XDP");
+    //bpf_debug("Running mode %u", direction);
+    //bpf_debug("Scan VLANs: %u %u", internet_vlan, isp_vlan);
     if (!dissector_new(ctx, &dissector)) return XDP_PASS;
     if (!dissector_find_l3_offset(&dissector)) return XDP_PASS;
     if (!dissector_find_ip_header(&dissector)) return XDP_PASS;
@@ -46,7 +46,7 @@ int xdp_prog(struct xdp_md *ctx)
     struct ip_hash_key lookup_key;
     int effective_direction = 0;
     struct ip_hash_info * ip_info = setup_lookup_key_and_tc_cpu(direction, &lookup_key, &dissector, internet_vlan, &effective_direction);
-    bpf_debug("Effective direction: %d", effective_direction);
+    //bpf_debug("Effective direction: %d", effective_direction);
 
     __u32 tc_handle = 0;
     __u32 cpu = 0;
@@ -68,10 +68,10 @@ int xdp_prog(struct xdp_md *ctx)
         __u32 cpu_dest = *cpu_lookup;
 
         // Redirect based on CPU
-        bpf_debug("Zooming to CPU: %u", cpu_dest);
-        bpf_debug("Mapped to handle: %u", tc_handle);
+        //bpf_debug("Zooming to CPU: %u", cpu_dest);
+        //bpf_debug("Mapped to handle: %u", tc_handle);
         long redirect_result = bpf_redirect_map(&cpu_map, cpu_dest, 0);
-        bpf_debug("Redirect result: %u", redirect_result);
+        //bpf_debug("Redirect result: %u", redirect_result);
         return redirect_result;
     }
 	return XDP_PASS;
@@ -84,12 +84,12 @@ int tc_iphash_to_cpu(struct __sk_buff *skb)
         bpf_debug("Error: interface direction unspecified, aborting.");
         return TC_ACT_OK;
     }
-    bpf_debug("SKB VLAN TCI: %u", skb->vlan_tci);    
+    //bpf_debug("SKB VLAN TCI: %u", skb->vlan_tci);    
 
     // Remove me
-    bpf_debug("START TC");
+    //bpf_debug("START TC");
     __u32 cpu = bpf_get_smp_processor_id();
-    bpf_debug("TC egress fired on CPU %u", cpu);
+    //bpf_debug("TC egress fired on CPU %u", cpu);
 
     // Lookup the queue
     struct txq_config *txq_cfg;
@@ -112,7 +112,7 @@ int tc_iphash_to_cpu(struct __sk_buff *skb)
     struct ip_hash_key lookup_key;
     int effective_direction = 0;
     struct ip_hash_info * ip_info = tc_setup_lookup_key_and_tc_cpu(direction, &lookup_key, &dissector, internet_vlan, &effective_direction);
-    bpf_debug("TC effective direction: %d", effective_direction);
+    //bpf_debug("TC effective direction: %d", effective_direction);
 
     // Temporary pping integration - needs a lot of cleaning
     struct parsing_context context = {0};
@@ -125,12 +125,12 @@ int tc_iphash_to_cpu(struct __sk_buff *skb)
 
     if (ip_info && ip_info->tc_handle != 0) {
         // We found a matching mapped TC flow
-        bpf_debug("Mapped to TC handle %x", ip_info->tc_handle);
+        //bpf_debug("Mapped to TC handle %x", ip_info->tc_handle);
         skb->priority = ip_info->tc_handle;
         return TC_ACT_OK;
     } else {
         // We didn't find anything
-        bpf_debug("TC didn't map anything");
+        //bpf_debug("TC didn't map anything");
         return TC_ACT_OK;
     }
 

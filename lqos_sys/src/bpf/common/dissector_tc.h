@@ -88,7 +88,7 @@ static __always_inline bool tc_dissector_find_l3_offset(struct tc_dissector_t *d
             {
                 return false;
             }
-            bpf_debug("TC Found VLAN");
+            //bpf_debug("TC Found VLAN");
             struct vlan_hdr *vlan = (struct vlan_hdr *)(dissector->start + offset);
             // Calculated from the SKB
             //dissector->current_vlan = vlan->h_vlan_TCI;
