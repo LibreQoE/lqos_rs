@@ -9,9 +9,9 @@ use libbpf_sys::{
     bpf_xdp_attach, libbpf_set_strict_mode, LIBBPF_STRICT_ALL, XDP_FLAGS_UPDATE_IF_NOEXIST,
 };
 use nix::libc::{geteuid, if_nametoindex};
-use std::ffi::CString;
+use std::{ffi::CString, process::Command};
 
-mod bpf {
+pub(crate) mod bpf {
     #![allow(warnings, unused)]
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
@@ -128,11 +128,13 @@ pub fn attach_xdp_and_tc_to_interface(
         skeleton
     };
 
-    // Configure CPU Maps - only do this for the Internet direction
-    if direction == InterfaceDirection::Internet {
+    // Configure CPU Maps
+    {
         let cpu_map = CpuMapping::new()?;
+        crate::cpu_map::xps_setup_default_disable(interface_name)?;
         cpu_map.mark_cpus_available()?;
-    }
+        cpu_map.setup_base_txq_config()?;
+    } // Scope block to ensure the CPU maps are closed
 
     // Attach the TC program
     // extern int tc_attach_egress(int ifindex, bool verbose, struct lqos_kern *obj);
@@ -141,6 +143,20 @@ pub fn attach_xdp_and_tc_to_interface(
     let _ =
         unsafe { bpf::tc_detach_egress(interface_index as i32, true, true, interface_c.as_ptr()) }; // Ignoring error, because it's ok to not have something to detach
 
+    // Remove any previous entry
+    let r = Command::new("tc")
+        .args(["qdisc", "del", "dev", interface_name, "clsact"])
+        .output()?;
+    println!("{}", String::from_utf8(r.stderr).unwrap());
+    
+    // Add the classifier
+    let r = Command::new("tc")
+        .args(["filter", "add", "dev", interface_name, "clsact"])
+        .output()?;
+    println!("{}", String::from_utf8(r.stderr).unwrap());
+
+
+    // Attach to the egress
     let error = unsafe { bpf::tc_attach_egress(interface_index as i32, true, skeleton) };
     if error != 0 {
         return Err(Error::msg("Unable to attach TC to interface"));

@@ -106,7 +106,7 @@ fn parse_add_ip(ip: &str, classid: &str, cpu: &str, upload: &Option<String>) -> 
     Ok(BusRequest::MapIpToFlow {
         ip_address: ip.to_string(),
         tc_handle: TcHandle::from_string(classid)?,
-        cpu: u32::from_str_radix(cpu, 16)?, // Force HEX representation
+        cpu: u32::from_str_radix(&cpu.replace("0x", ""), 16)?, // Force HEX representation
         upload: upload.is_some(),
     })
 }
