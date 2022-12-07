@@ -38,7 +38,7 @@ static __always_inline bool tc_dissector_new(struct __sk_buff *ctx, struct tc_di
     dissector->end = (void *)(long)ctx->data_end;
     dissector->ethernet_header = (struct ethhdr *)NULL;
     dissector->l3offset = 0;
-    dissector->current_vlan = 0;
+    dissector->current_vlan = bpf_htons(ctx->vlan_tci);
 
     // Check that there's room for an ethernet header
     if SKB_OVERFLOW (dissector->start, dissector->end, ethhdr)
@@ -88,8 +88,10 @@ static __always_inline bool tc_dissector_find_l3_offset(struct tc_dissector_t *d
             {
                 return false;
             }
+            bpf_debug("TC Found VLAN");
             struct vlan_hdr *vlan = (struct vlan_hdr *)(dissector->start + offset);
-            dissector->current_vlan = vlan->h_vlan_TCI;
+            // Calculated from the SKB
+            //dissector->current_vlan = vlan->h_vlan_TCI;
             eth_type = bpf_ntohs(vlan->h_vlan_encapsulated_proto);
             offset += sizeof(struct vlan_hdr);
         }

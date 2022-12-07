@@ -96,11 +96,15 @@ static __always_inline struct ip_hash_info * tc_setup_lookup_key_and_tc_cpu(
         struct ip_hash_info * ip_info = bpf_map_lookup_elem(&map_ip_to_cpu_and_tc, lookup_key);
         return ip_info;
     } else {
+        bpf_debug("Current VLAN (TC): %d", dissector->current_vlan);
+        bpf_debug("Source: %x", dissector->src_ip.in6_u.u6_addr32[3]);
+        bpf_debug("Dest: %x", dissector->dst_ip.in6_u.u6_addr32[3]);
         if (dissector->current_vlan == internet_vlan) {
             // Packet is going OUT to the Internet.
             // Therefore, it is UPLOAD.
             lookup_key->address = dissector->src_ip;
             *out_effective_direction = 2;
+            bpf_debug("Reciprocal lookup");
             struct ip_hash_info * ip_info = bpf_map_lookup_elem(&map_ip_to_cpu_and_tc_recip, lookup_key);
             return ip_info;
         } else {
@@ -108,8 +112,9 @@ static __always_inline struct ip_hash_info * tc_setup_lookup_key_and_tc_cpu(
             // Therefore, it is DOWNLOAD.
             lookup_key->address = dissector->dst_ip;
             *out_effective_direction = 1;
-            lookup_key->address = (dissector->current_vlan == internet_vlan) ? dissector->src_ip : dissector->dst_ip;
-            *out_effective_direction = (dissector->current_vlan == internet_vlan) ? 2 : 1;
+            bpf_debug("Forward lookup");
+            struct ip_hash_info * ip_info = bpf_map_lookup_elem(&map_ip_to_cpu_and_tc, lookup_key);
+            return ip_info;
         }
     }
     struct ip_hash_info * ip_info = bpf_map_lookup_elem(&map_ip_to_cpu_and_tc, lookup_key);

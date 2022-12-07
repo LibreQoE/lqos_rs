@@ -84,6 +84,7 @@ int tc_iphash_to_cpu(struct __sk_buff *skb)
         bpf_debug("Error: interface direction unspecified, aborting.");
         return TC_ACT_OK;
     }
+    bpf_debug("SKB VLAN TCI: %u", skb->vlan_tci);    
 
     // Remove me
     bpf_debug("START TC");
@@ -111,6 +112,7 @@ int tc_iphash_to_cpu(struct __sk_buff *skb)
     struct ip_hash_key lookup_key;
     int effective_direction = 0;
     struct ip_hash_info * ip_info = tc_setup_lookup_key_and_tc_cpu(direction, &lookup_key, &dissector, internet_vlan, &effective_direction);
+    bpf_debug("TC effective direction: %d", effective_direction);
 
     // Temporary pping integration - needs a lot of cleaning
     struct parsing_context context = {0};
