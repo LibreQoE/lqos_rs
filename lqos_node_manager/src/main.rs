@@ -24,6 +24,7 @@ fn rocket() -> _ {
             tracker::cpu_usage,
             tracker::ram_usage,
             tracker::top_10_downloaders,
+            tracker::rtt_histogram,
 
             // Supporting files
             static_pages::bootsrap_css,

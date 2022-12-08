@@ -31,6 +31,7 @@ pub enum BusRequest {
     ClearIpFlow,
     ListIpFlow,
     XdpPping,
+    RttHistogram,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -50,6 +51,7 @@ pub enum BusResponse {
     TopDownloaders(Vec<IpStats>),
     MappedIps(Vec<IpMapping>),
     XdpPping(Vec<XdpPpingResult>),
+    RttHistogram(Vec<u32>),
 }
 
 pub fn encode_request(request: &BusSession) -> Result<Vec<u8>> {

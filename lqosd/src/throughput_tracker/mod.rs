@@ -109,3 +109,20 @@ pub fn xdp_pping_compat() -> BusResponse {
         .collect();
     BusResponse::XdpPping(result)
 }
+
+pub fn rtt_histogram() -> BusResponse {
+    let mut result = vec![0; 20];
+    let reader = THROUGHPUT_TRACKER.read();
+    for (_, data) in reader.raw_data.iter() {
+        let valid_samples : Vec<u32> = data.recent_rtt_data.iter().filter(|d| **d > 0).map(|d| *d).collect();
+        let samples = valid_samples.len() as u32;
+        if samples > 0 {
+            let median = valid_samples[valid_samples.len() / 2] as f32 / 100.0;
+            let median = f32::min(200.0, median);
+            let column = (median / 10.0) as usize;
+            result[column] += 1;
+        }
+    }
+
+    BusResponse::RttHistogram(result)
+}

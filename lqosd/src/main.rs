@@ -75,6 +75,7 @@ async fn main() -> Result<()> {
                             BusRequest::ClearIpFlow => clear_ip_flows(),
                             BusRequest::ListIpFlow => list_mapped_ips(),
                             BusRequest::XdpPping => throughput_tracker::xdp_pping_compat(),
+                            BusRequest::RttHistogram => throughput_tracker::rtt_histogram(),
                         });
                     }
                     //println!("{:?}", response);

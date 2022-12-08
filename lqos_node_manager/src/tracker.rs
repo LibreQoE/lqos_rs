@@ -103,6 +103,10 @@ lazy_static! {
     static ref TOP_10_DOWNLOADERS : RwLock<Vec<IpStats>> = RwLock::new(Vec::new());
 }
 
+lazy_static! {
+    static ref RTT_HISTOGRAM : RwLock<Vec<u32>> = RwLock::new(Vec::new());
+}
+
 async fn get_data_from_server() -> Result<()> {
     // Send request to lqosd
     let mut stream = TcpStream::connect(BUS_BIND_ADDRESS).await?;
@@ -111,6 +115,7 @@ async fn get_data_from_server() -> Result<()> {
         requests: vec![
             BusRequest::GetCurrentThroughput,
             BusRequest::GetTopNDownloaders(10),
+            BusRequest::RttHistogram,
         ],
     };
     let msg = encode_request(&test)?;
@@ -143,6 +148,9 @@ async fn get_data_from_server() -> Result<()> {
             }
             BusResponse::TopDownloaders(stats) => {
                 *TOP_10_DOWNLOADERS.write() = stats.clone();
+            }
+            BusResponse::RttHistogram(stats) => {
+                *RTT_HISTOGRAM.write() = stats.clone();
             }
             // Default
             _ => {}
@@ -180,4 +188,9 @@ pub fn ram_usage() -> Json<Vec<u64>> {
 #[get("/api/top_10_downloaders")]
 pub fn top_10_downloaders() -> Json<Vec<IpStats>> {
     Json(TOP_10_DOWNLOADERS.read().clone())
+}
+
+#[get("/api/rtt_histogram")]
+pub fn rtt_histogram() -> Json<Vec<u32>> {
+    Json(RTT_HISTOGRAM.read().clone())
 }

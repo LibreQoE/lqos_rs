@@ -87,6 +87,16 @@
                 </div>
             </div>
         </div>
+
+        <!-- RTT Histogram -->
+        <div class="col-sm-6">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">TCP Round-Trip Time Histogram</h5>
+                    <div id="rttHistogram" style="height: 150px"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Dashboard Row 3 -->
@@ -201,12 +211,30 @@
             });
         }
 
+        function updateHistogram() {
+            $.get("/api/rtt_histogram", (rtt) => {
+                let graph = document.getElementById("rttHistogram");
+                let x = [];
+                let y = [];
+                for (let i=0; i<rtt.length; i++) {
+                    x.push(i);
+                    y.push(rtt[i]);
+                }
+                let data = [
+                    {x:x, y:y, type: 'bar'}
+                ]
+                Plotly.newPlot(graph, data, { margin: { l:0,r:0,b:15,t:0 }});
+                setTimeout(updateHistogram, 5000);
+            });
+        }
+
         function start() {
             updateCurrentThroughput();
             updateThroughputGraph();
             updateCpu();
             updateRam();
             updateTop10();
+            updateHistogram();
         }
 
         console.log("hello");
