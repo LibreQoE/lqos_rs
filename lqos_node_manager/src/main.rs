@@ -31,5 +31,6 @@ fn rocket() -> _ {
             static_pages::jquery_js,
             static_pages::bootsrap_js,
             static_pages::tinylogo,
+            static_pages::favicon,
         ])
 }

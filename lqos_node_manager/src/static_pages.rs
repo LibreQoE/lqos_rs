@@ -34,3 +34,8 @@ pub async fn bootsrap_js<'a>() -> Option<NamedFile> {
 pub async fn tinylogo<'a>() -> Option<NamedFile> {
     NamedFile::open("static/tinylogo.svg").await.ok()
 }
+
+#[get("/favicon.ico")]
+pub async fn favicon<'a>() -> Option<NamedFile> {
+    NamedFile::open("static/favicon.ico").await.ok()
+}
