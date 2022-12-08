@@ -2,7 +2,7 @@ use std::time::Duration;
 use anyhow::Result;
 use lqos_bus::{BUS_BIND_ADDRESS, BusRequest, BusSession, encode_request, decode_response, BusResponse, IpStats};
 use rocket::tokio::{net::TcpStream, io::{AsyncWriteExt, AsyncReadExt}};
-use rocket::serde::{json::Json, Deserialize, Serialize};
+use rocket::serde::{json::Json, Serialize};
 use parking_lot::RwLock;
 use lazy_static::*;
 

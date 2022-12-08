@@ -29,3 +29,8 @@ pub async fn jquery_js<'a>() -> Option<NamedFile> {
 pub async fn bootsrap_js<'a>() -> Option<NamedFile> {
     NamedFile::open("static/vendor/bootstrap.bundle.min.js").await.ok()
 }
+
+#[get("/vendor/tinylogo.svg")]
+pub async fn tinylogo<'a>() -> Option<NamedFile> {
+    NamedFile::open("static/tinylogo.svg").await.ok()
+}

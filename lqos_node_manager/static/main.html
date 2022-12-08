@@ -9,11 +9,11 @@
     <script src="/vendor/plotly-2.16.1.min.js"></script>
     <script src="vendor/jquery.min.js"></script>
 </head>
-<body>
+<body class="bg-secondary">
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/">LibreQoS</a>
+            <a class="navbar-brand" href="/"><img src="/vendor/tinylogo.svg" alt="LibreQoS SVG Logo" width="25" height="25" />&nbsp;LibreQoS</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -30,11 +30,13 @@
         </div>
     </nav>
 
+    <div id="container" style="padding: 4px;">
+
     <!-- Dashboard Row 1 -->
     <div class="row">
         <!-- THROUGHPUT -->
         <div class="col-sm-4">
-            <div class="card">
+            <div class="card bg-light">
                 <div class="card-body">
                     <h5 class="card-title">Current Throughput</h5>
                     <table class="table">
@@ -55,17 +57,17 @@
 
         <!-- RAM INFO -->
         <div class="col-sm-2">
-            <div class="card">
+            <div class="card bg-light">
                 <div class="card-body">
                     <h5 class="card-title">Memory Status</h5>
-                    <div id="ram" style="height: 100px"></div>
+                    <div id="ram" style="height: 97px"></div>
                 </div>
             </div>
         </div>
 
         <!-- CPU INFO -->
         <div class="col-sm-6">
-            <div class="card">
+            <div class="card bg-light">
                 <div class="card-body">
                     <h5 class="card-title">CPU Status</h5>
                     <div id="cpu" style="height: 100px"></div>
@@ -75,13 +77,13 @@
     </div>
 
     <!-- Dashboard Row 2 -->
-    <div class="row">
+    <div class="row" style="height: 200px; margin-bottom: 20px;">
         <!-- 5 minutes of throughput -->
         <div class="col-sm-6">
-            <div class="card">
+            <div class="card bg-light">
                 <div class="card-body">
                     <h5 class="card-title">Last 5 Minutes</h5>
-                    <div id="tpGraph" style="height: 200px"></div>
+                    <div id="tpGraph" style="height: 150px"></div>
                 </div>
             </div>
         </div>
@@ -90,13 +92,15 @@
     <!-- Dashboard Row 3 -->
     <div class="row">
         <div class="col-sm-6">
-            <div class="card">
+            <div class="card bg-light">
                 <div class="card-body">
                     <h5 class="card-title">Top 10 Downloaders</h5>
                     <div id="top10dl"></div>
                 </div>
             </div>
         </div>
+    </div>
+
     </div>
 
     <script>
@@ -173,7 +177,7 @@
         function updateTop10() {
             $.get("/api/top_10_downloaders", (tt) => {
                 let html = "<table class='table'>";
-                html += "<thead><th>IP Address</th><th>DL ⬇️</th><th>UL ⬆️</th><th>PPS ⬇️</th><th>PPS ⬆️</th><th>RTT</th><th>Shaped</th></thead>";
+                html += "<thead><th>IP Address</th><th>DL ⬇️</th><th>UL ⬆️</th><th>PPS ⬇️</th><th>PPS ⬆️</th><th>RTT (ms)</th><th>Shaped</th></thead>";
                 for (let i=0; i<tt.length; i++) {
                     let color = "#ddd";
                     if (tt[i].tc_handle !=0) color = "#ddffdd";

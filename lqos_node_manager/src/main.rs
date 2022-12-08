@@ -29,6 +29,7 @@ fn rocket() -> _ {
             static_pages::bootsrap_css,
             static_pages::plotly_js,
             static_pages::jquery_js,
-            static_pages::bootsrap_js
+            static_pages::bootsrap_js,
+            static_pages::tinylogo,
         ])
 }
