@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="/vendor/bootstrap.min.css" rel="stylesheet">
+    <title>LibreQoS - Local Node Manager</title>
+    <script src="/lqos.js"></script>
+    <script src="/vendor/plotly-2.16.1.min.js"></script>
+    <script src="vendor/jquery.min.js"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">LibreQoS</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="/">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Another Option</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Dashboard Row 1 -->
+    <div class="row">
+        <!-- THROUGHPUT -->
+        <div class="col-sm-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Current Throughput</h5>
+                    <table class="table">
+                        <tr>
+                            <td style="font-weight: bold">Packets/Second</td>
+                            <td id="ppsDown"></td>
+                            <td id="ppsUp"></td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: bold">Bits/Second</td>
+                            <td id="bpsDown"></td>
+                            <td id="bpsUp"></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- RAM INFO -->
+        <div class="col-sm-2">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Memory Status</h5>
+                    <div id="ram" style="height: 100px"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CPU INFO -->
+        <div class="col-sm-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">CPU Status</h5>
+                    <div id="cpu" style="height: 100px"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Row 2 -->
+    <div class="row">
+        <!-- 5 minutes of throughput -->
+        <div class="col-sm-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Last 5 Minutes</h5>
+                    <div id="tpGraph" style="height: 200px"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Row 3 -->
+    <div class="row">
+        <div class="col-sm-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Top 10 Downloaders</h5>
+                    <div id="top10dl"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function scaleNumber(n) {
+            if (n > 1000000000) {
+                return (n/1000000000).toFixed(2) + "G";
+            } else if (n > 1000000) {
+                return (n/1000000).toFixed(2) + "M";
+            } else if (n > 1000) {
+                return (n/1000).toFixed(2) + "K";
+            }
+            return n;
+        }
+
+        function updateCurrentThroughput() {
+            $.get("/api/current_throughput", (tp) => {
+                $("#ppsDown").text(scaleNumber(tp.packets_per_second[0]));
+                $("#ppsUp").text(scaleNumber(tp.packets_per_second[1]));
+                $("#bpsDown").text(scaleNumber(tp.bits_per_second[0]));
+                $("#bpsUp").text(scaleNumber(tp.bits_per_second[1]));
+                setTimeout(updateCurrentThroughput, 1000);
+            });
+        }
+
+        function updateThroughputGraph() {
+            $.get("/api/throughput_ring", (tp) => {
+                let graph = document.getElementById("tpGraph");
+                let x = [];
+                let y = [];
+                let y2 = [];
+                for (i=0; i<300; i++) {
+                    x.push(i);
+                    y.push(tp[i].bits_per_second[0]);
+                    y2.push(0.0 - tp[i].bits_per_second[1]);
+                }
+                let data = [
+                    {x: x, y:y, name: 'Download', type: 'scatter', fill: 'tozeroy'},
+                    {x: x, y:y2, name: 'Upload', type: 'scatter', fill: 'tozeroy'},
+                ];
+                Plotly.newPlot(graph, data, { margin: { l:0,r:0,b:0,t:0,pad:4 }, yaxis: { automargin: true }, xaxis: {automargin: true} });
+                //console.log(tp);
+                setTimeout(updateThroughputGraph, 1000);
+            });
+        }
+
+        function updateCpu() {
+            $.get("/api/cpu", (cpu) => {
+                let graph = document.getElementById("cpu");
+                let x = [];
+                let y = [];
+                for (i=0; i<cpu.length; i++) {
+                    x.push(i);
+                    y.push(cpu[i]);
+                }
+                let data = [ {x: x, y:y, type: 'bar' } ];
+                Plotly.newPlot(graph, data, { margin: { l:0,r:0,b:0,t:0 }, yaxis: { automargin: true, autorange: false, range: [0.0, 100.0 ] } });
+                setTimeout(updateCpu, 2000);
+            });
+        }
+
+        function updateRam() {
+            $.get("/api/ram", (ram) => {
+                let graph = document.getElementById("ram");
+                let data = [ {
+                    values: [ram[0], ram[1]-ram[0]],
+                    labels: ['Used', 'Available'], 
+                    type: 'pie' 
+                } ];
+                Plotly.newPlot(graph, data, { margin: { l:0,r:0,b:0,t:0 } });
+                setTimeout(updateRam, 30000);
+            });
+        }
+
+        function updateTop10() {
+            $.get("/api/top_10_downloaders", (tt) => {
+                let html = "<table class='table'>";
+                html += "<thead><th>IP Address</th><th>DL ⬇️</th><th>UL ⬆️</th><th>PPS ⬇️</th><th>PPS ⬆️</th><th>RTT</th><th>Shaped</th></thead>";
+                for (let i=0; i<tt.length; i++) {
+                    let color = "#ddd";
+                    if (tt[i].tc_handle !=0) color = "#ddffdd";
+                    html += "<tr style='background-color: " + color + "'>";
+                    html += "<td>" + tt[i].ip_address + "</td>";
+                    html += "<td>" + scaleNumber(tt[i].bits_per_second[0]) + "</td>";
+                    html += "<td>" + scaleNumber(tt[i].bits_per_second[1]) + "</td>";
+                    html += "<td>" + scaleNumber(tt[i].packets_per_second[0]) + "</td>";
+                    html += "<td>" + scaleNumber(tt[i].packets_per_second[1]) + "</td>";
+                    html += "<td>" + tt[i].median_tcp_rtt.toFixed(2) + "</td>";
+                    if (tt[i].tc_handle !=0) {
+                        html += "<td>✅</td>";
+                    } else {
+                        html += "<td></td>";
+                    }
+                    html += "</tr>";
+                }
+                html += "</table>";
+                $("#top10dl").html(html);
+                setTimeout(updateTop10, 5000);
+            });
+        }
+
+        function start() {
+            updateCurrentThroughput();
+            updateThroughputGraph();
+            updateCpu();
+            updateRam();
+            updateTop10();
+        }
+
+        console.log("hello");
+        $(document).ready(start);
+    </script>
+
+    <!-- Leave to last -->
+    <script src="vendor/bootstrap.bundle.min.js"></script>
+</body>
+</html>
