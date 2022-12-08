@@ -41,7 +41,6 @@ My modifications are Copyright 2022, Herbert Wolverson
 
 struct parsing_context
 {
-    __u32 skb_len;
     struct tcphdr *tcp;
     __u64 now;
     struct tc_dissector_t * dissector;
@@ -298,7 +297,7 @@ static __always_inline int parse_tcp_identifier(struct parsing_context *context,
 
     // Do not timestamp pure ACKs (no payload)
     void *nh_pos = (context->tcp + 1) + (context->tcp->doff << 2);
-    proto_info->pid_valid = nh_pos - context->dissector->start < context->skb_len || context->tcp->syn;
+    proto_info->pid_valid = nh_pos - context->dissector->start < context->dissector->ctx->len || context->tcp->syn;
 
     // Do not match on non-ACKs (TSecr not valid)
     proto_info->reply_pid_valid = context->tcp->ack;

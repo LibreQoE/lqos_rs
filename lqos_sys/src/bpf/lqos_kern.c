@@ -92,14 +92,16 @@ int tc_iphash_to_cpu(struct __sk_buff *skb)
     //bpf_debug("TC egress fired on CPU %u", cpu);
 
     // Lookup the queue
-    struct txq_config *txq_cfg;
-    txq_cfg = bpf_map_lookup_elem(&map_txq_config, &cpu);
-    if (!txq_cfg) return TC_ACT_SHOT;
-    if (txq_cfg->queue_mapping != 0) {
-		skb->queue_mapping = txq_cfg->queue_mapping;
-	} else {
-		bpf_debug("Misconf: CPU:%u no conf (curr qm:%d)\n", cpu, skb->queue_mapping);
-	}
+    {
+        struct txq_config *txq_cfg;
+        txq_cfg = bpf_map_lookup_elem(&map_txq_config, &cpu);
+        if (!txq_cfg) return TC_ACT_SHOT;
+        if (txq_cfg->queue_mapping != 0) {
+            skb->queue_mapping = txq_cfg->queue_mapping;
+        } else {
+            bpf_debug("Misconf: CPU:%u no conf (curr qm:%d)\n", cpu, skb->queue_mapping);
+        }
+    } // Scope to remove tcq_cfg when done with it
 
     // TODO: Support XDP Metadata shunt
     // In the meantime, we'll do it the hard way:
@@ -117,7 +119,6 @@ int tc_iphash_to_cpu(struct __sk_buff *skb)
     // Temporary pping integration - needs a lot of cleaning
     struct parsing_context context = {0};
     context.now = bpf_ktime_get_ns();
-    context.skb_len = skb->len;
     context.tcp = NULL;
     context.dissector = &dissector;
     context.active_host = &lookup_key.address;
