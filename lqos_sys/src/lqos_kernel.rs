@@ -6,7 +6,7 @@
 use crate::cpu_map::CpuMapping;
 use anyhow::{Error, Result};
 use libbpf_sys::{
-    bpf_xdp_attach, libbpf_set_strict_mode, LIBBPF_STRICT_ALL, XDP_FLAGS_UPDATE_IF_NOEXIST,
+    bpf_xdp_attach, libbpf_set_strict_mode, LIBBPF_STRICT_ALL, XDP_FLAGS_UPDATE_IF_NOEXIST, XDP_FLAGS_HW_MODE, XDP_FLAGS_DRV_MODE, XDP_FLAGS_SKB_MODE,
 };
 use nix::libc::{geteuid, if_nametoindex};
 use std::{ffi::CString, process::Command};
@@ -116,15 +116,16 @@ pub fn attach_xdp_and_tc_to_interface(
         load_kernel(skeleton)?;
         let _ = unload_xdp_from_interface(interface_name); // Ignoring error, it's ok if there isn't one
         let prog_fd = bpf::bpf_program__fd((*skeleton).progs.xdp_prog);
-        let error = bpf_xdp_attach(
+        /*let error = bpf_xdp_attach(
             interface_index.try_into().unwrap(),
             prog_fd,
-            XDP_FLAGS_UPDATE_IF_NOEXIST,
+            XDP_FLAGS_UPDATE_IF_NOEXIST | XDP_FLAGS_HW_MODE,
             std::ptr::null(),
         );
         if error != 0 {
             return Err(Error::msg("Unable to attach to interface"));
-        }
+        }*/
+        attach_xdp_best_available(interface_index, prog_fd)?;
         skeleton
     };
 
@@ -162,5 +163,47 @@ pub fn attach_xdp_and_tc_to_interface(
         return Err(Error::msg("Unable to attach TC to interface"));
     }
 
+    Ok(())
+}
+
+unsafe fn attach_xdp_best_available(interface_index: u32, prog_fd: i32) -> Result<()> {
+    // Try hardware offload first
+    if try_xdp_attach(interface_index, prog_fd, XDP_FLAGS_HW_MODE).is_err() {
+        // Try driver attach
+        if try_xdp_attach(interface_index, prog_fd, XDP_FLAGS_DRV_MODE).is_err() {
+            // Try SKB mode
+            if try_xdp_attach(interface_index, prog_fd, XDP_FLAGS_SKB_MODE).is_err() {
+                // Try no flags
+                let error = bpf_xdp_attach(
+                    interface_index.try_into().unwrap(),
+                    prog_fd,
+                    XDP_FLAGS_UPDATE_IF_NOEXIST,
+                    std::ptr::null(),
+                );
+                if error != 0 {
+                    return Err(Error::msg("Unable to attach to interface"));
+                }
+            } else {
+                println!("Attached in SKB compatibility mode. (Not so fast)");
+            }
+        } else {
+            println!("Attached in driver mode. (Fast)");
+        }
+    } else {
+        println!("Attached in hardware accelerated mode. (Fastest)");
+    }
+    Ok(())
+}
+
+unsafe fn try_xdp_attach(interface_index: u32, prog_fd: i32, connect_mode: u32) -> Result<()> {
+    let error = bpf_xdp_attach(
+        interface_index.try_into().unwrap(),
+        prog_fd,
+        XDP_FLAGS_UPDATE_IF_NOEXIST | connect_mode,
+        std::ptr::null(),
+    );
+    if error != 0 {
+        return Err(Error::msg("Unable to attach to interface"));
+    }
     Ok(())
 }
