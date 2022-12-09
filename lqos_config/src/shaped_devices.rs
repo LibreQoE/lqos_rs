@@ -1,4 +1,4 @@
-use std::{path::Path, net::{Ipv4Addr, Ipv6Addr}};
+use std::{path::{Path, PathBuf}, net::{Ipv4Addr, Ipv6Addr}};
 use anyhow::{Result, Error};
 use csv::StringRecord;
 use crate::etc;
@@ -9,10 +9,14 @@ pub struct ConfigShapedDevices {
 }
 
 impl ConfigShapedDevices {
-    pub fn load() -> Result<Self> {
+    pub fn path() -> Result<PathBuf> {
         let cfg = etc::EtcLqos::load()?;
         let base_path = Path::new(&cfg.lqos_directory);
-        let final_path = base_path.join("ShapedDevices.csv");
+        Ok(base_path.join("ShapedDevices.csv"))
+    }
+
+    pub fn load() -> Result<Self> {
+        let final_path = ConfigShapedDevices::path()?;
         let mut reader = csv::Reader::from_path(final_path)?;
         
         // Example: StringRecord(["1", "968 Circle St., Gurnee, IL 60031", "1", "Device 1", "", "", "192.168.101.2", "", "25", "5", "10000", "10000", ""])

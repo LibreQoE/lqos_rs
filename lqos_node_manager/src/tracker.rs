@@ -2,7 +2,7 @@ use std::{time::Duration, net::IpAddr};
 use anyhow::Result;
 use lqos_bus::{BUS_BIND_ADDRESS, BusRequest, BusSession, encode_request, decode_response, BusResponse, IpStats};
 use lqos_config::ConfigShapedDevices;
-use rocket::tokio::{net::TcpStream, io::{AsyncWriteExt, AsyncReadExt}};
+use rocket::tokio::{net::TcpStream, io::{AsyncWriteExt, AsyncReadExt}, task::spawn_blocking};
 use rocket::serde::{json::Json, Serialize};
 use parking_lot::RwLock;
 use lazy_static::*;
@@ -13,8 +13,12 @@ pub async fn update_tracking() {
     use sysinfo::SystemExt;
     let mut sys = System::new_all();
 
+    spawn_blocking(|| {
+        let _ = watch_for_shaped_devices_changing();
+    });
+
     loop {
-        println!("Updating tracking data");
+        //println!("Updating tracking data");
         sys.refresh_cpu();
         sys.refresh_memory();
         let cpu_usage = sys
@@ -30,6 +34,22 @@ pub async fn update_tracking() {
         }
         let _ = get_data_from_server().await; // Ignoring errors to keep running
         rocket::tokio::time::sleep(Duration::from_secs(1)).await;
+    }
+}
+
+fn watch_for_shaped_devices_changing() -> Result<()> {
+    use notify::{Watcher, RecursiveMode, Config};
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    let mut watcher = notify::RecommendedWatcher::new(tx, Config::default())?;
+
+    watcher.watch(&ConfigShapedDevices::path()?, RecursiveMode::NonRecursive)?;
+    loop {
+        let _ = rx.recv();
+        if let Ok(new_file) = ConfigShapedDevices::load() {
+            println!("ShapedDevices.csv changed");
+            *SHAPED_DEVICES.write() = new_file;
+        }
     }
 }
 
