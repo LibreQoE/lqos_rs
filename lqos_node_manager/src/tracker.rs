@@ -1,6 +1,7 @@
-use std::time::Duration;
+use std::{time::Duration, net::{IpAddr, Ipv4Addr}};
 use anyhow::Result;
 use lqos_bus::{BUS_BIND_ADDRESS, BusRequest, BusSession, encode_request, decode_response, BusResponse, IpStats};
+use lqos_config::ConfigShapedDevices;
 use rocket::tokio::{net::TcpStream, io::{AsyncWriteExt, AsyncReadExt}};
 use rocket::serde::{json::Json, Serialize};
 use parking_lot::RwLock;
@@ -115,6 +116,10 @@ lazy_static! {
     static ref HOST_COUNTS : RwLock<(u32, u32)> = RwLock::new((0, 0));
 }
 
+lazy_static! {
+    static ref SHAPED_DEVICES : RwLock<ConfigShapedDevices> = RwLock::new(ConfigShapedDevices::load().unwrap());
+}
+
 async fn get_data_from_server() -> Result<()> {
     // Send request to lqosd
     let mut stream = TcpStream::connect(BUS_BIND_ADDRESS).await?;
@@ -203,12 +208,38 @@ pub fn ram_usage() -> Json<Vec<u64>> {
 
 #[get("/api/top_10_downloaders")]
 pub fn top_10_downloaders() -> Json<Vec<IpStats>> {
-    Json(TOP_10_DOWNLOADERS.read().clone())
+    let mut tt = TOP_10_DOWNLOADERS.read().clone();
+    let cfg = SHAPED_DEVICES.read();
+    tt.iter_mut().for_each(|d| {
+        if let Ok(ip) = d.ip_address.parse::<IpAddr>() {
+            let lookup = match ip {
+                IpAddr::V4(ip) => ip.to_ipv6_mapped(),
+                IpAddr::V6(ip) => ip,
+            };
+            if let Some((_, id)) = cfg.trie.longest_match(lookup) {
+                d.ip_address = format!("{} ({})", cfg.devices[*id].circuit_name, d.ip_address);
+            }
+        }
+    });
+    Json(tt)
 }
 
 #[get("/api/worst_10_rtt")]
 pub fn worst_10_rtt() -> Json<Vec<IpStats>> {
-    Json(WORST_10_RTT.read().clone())
+    let mut tt = WORST_10_RTT.read().clone();
+    let cfg = SHAPED_DEVICES.read();
+    tt.iter_mut().for_each(|d| {
+        if let Ok(ip) = d.ip_address.parse::<IpAddr>() {
+            let lookup = match ip {
+                IpAddr::V4(ip) => ip.to_ipv6_mapped(),
+                IpAddr::V6(ip) => ip,
+            };
+            if let Some((_, id)) = cfg.trie.longest_match(lookup) {
+                d.ip_address = format!("{} ({})", cfg.devices[*id].circuit_name, d.ip_address);
+            }
+        }
+    });
+    Json(tt)
 }
 
 

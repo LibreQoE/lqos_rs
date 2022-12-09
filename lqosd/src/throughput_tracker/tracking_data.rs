@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use lqos_bus::TcHandle;
 use lqos_sys::{XdpIpAddress, HostCounter, RttTrackingEntry};
 use anyhow::Result;
-use super::throughput_entry::ThroughputEntry;
+use super::{throughput_entry::ThroughputEntry, RETIRE_AFTER_SECONDS};
 
 pub struct ThroughputTracker {
     pub(crate) cycle: u64,
@@ -17,7 +17,7 @@ impl ThroughputTracker {
         // maximums.h (MAX_TRACKED_IPS), so we grab it
         // from there via the C API.
         Self {
-            cycle: 0,
+            cycle: RETIRE_AFTER_SECONDS,
             raw_data: HashMap::with_capacity(lqos_sys::max_tracked_ips()),
             bytes_per_second: (0, 0),
             packets_per_second: (0, 0),
@@ -54,9 +54,13 @@ impl ThroughputTracker {
                         entry.tc_handle = TcHandle::from_u32(c.tc_handle);
                     }
                 }
+                if entry.packets != entry.prev_packets {
+                    entry.most_recent_cycle = self.cycle;
+                }
             } else {
                 let mut entry = ThroughputEntry {
                     first_cycle: self.cycle,
+                    most_recent_cycle: 0,
                     bytes: (0, 0),
                     packets: (0, 0),
                     prev_bytes: (0, 0),

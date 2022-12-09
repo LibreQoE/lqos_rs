@@ -254,7 +254,7 @@
                 }
                 html += "</table>";
                 $("#worstRtt").html(html);
-                setTimeout(updateTop10, 5000);
+                setTimeout(updateWorst10, 5000);
             });
         }
 
@@ -264,7 +264,7 @@
                 let x = [];
                 let y = [];
                 for (let i=0; i<rtt.length; i++) {
-                    x.push(i);
+                    x.push(i*10.0);
                     y.push(rtt[i]);
                 }
                 let data = [

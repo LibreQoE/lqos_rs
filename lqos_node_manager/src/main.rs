@@ -1,3 +1,4 @@
+use lqos_config::ConfigShapedDevices;
 use rocket::fairing::AdHoc;
 
 #[macro_use] extern crate rocket;
@@ -6,7 +7,6 @@ mod tracker;
 
 #[launch]
 fn rocket() -> _ {
-    //let cfg = lqos_config::LibreQoSConfig::load().unwrap();
     rocket::build()
         .attach(AdHoc::on_liftoff("Poll lqosd", |_| {
             Box::pin(async move {

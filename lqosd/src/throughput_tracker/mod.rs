@@ -8,6 +8,8 @@ use std::time::Duration;
 use tokio::{task, time};
 use crate::throughput_tracker::tracking_data::ThroughputTracker;
 
+const RETIRE_AFTER_SECONDS: u64 = 30;
+
 lazy_static! {
     static ref THROUGHPUT_TRACKER: RwLock<ThroughputTracker> =
         RwLock::new(ThroughputTracker::new());
@@ -42,11 +44,18 @@ pub fn current_throughput() -> BusResponse {
     }
 }
 
+#[inline(always)]
+fn retire_check(cycle: u64, recent_cycle: u64) -> bool {
+    cycle < recent_cycle + RETIRE_AFTER_SECONDS
+}
+
 pub fn top_n(n: u32) -> BusResponse {
     let mut full_list: Vec<(XdpIpAddress, (u64, u64), (u64, u64), f32, TcHandle)> = {
         let tp = THROUGHPUT_TRACKER.read();
         tp.raw_data
             .iter()
+            .filter(|(ip, _)| !ip.as_ip().is_loopback())
+            .filter(|(_, d)| retire_check(tp.cycle, d.most_recent_cycle))
             .map(|(ip, te)| {
                 (
                     *ip,
@@ -80,6 +89,8 @@ pub fn worst_n(n: u32) -> BusResponse {
         let tp = THROUGHPUT_TRACKER.read();
         tp.raw_data
             .iter()
+            .filter(|(ip, _)| !ip.as_ip().is_loopback())
+            .filter(|(_, d)| retire_check(tp.cycle, d.most_recent_cycle))
             .map(|(ip, te)| {
                 (
                     *ip,
@@ -112,6 +123,7 @@ pub fn xdp_pping_compat() -> BusResponse {
     let raw = THROUGHPUT_TRACKER.read();
     let result = raw.raw_data
         .iter()
+        .filter(|(_, d)| retire_check(raw.cycle, d.most_recent_cycle))
         .filter_map(|(_ip, data)| {
             if data.tc_handle.as_u32() > 0 {
                 let mut valid_samples : Vec<u32> = data.recent_rtt_data.iter().filter(|d| **d > 0).map(|d| *d).collect();
@@ -146,7 +158,8 @@ pub fn xdp_pping_compat() -> BusResponse {
 pub fn rtt_histogram() -> BusResponse {
     let mut result = vec![0; 20];
     let reader = THROUGHPUT_TRACKER.read();
-    for (_, data) in reader.raw_data.iter() {
+    for (_, data) in reader.raw_data.iter().filter(|(_, d)| retire_check(reader.cycle, d.most_recent_cycle))
+    {
         let valid_samples : Vec<u32> = data.recent_rtt_data.iter().filter(|d| **d > 0).map(|d| *d).collect();
         let samples = valid_samples.len() as u32;
         if samples > 0 {
@@ -163,7 +176,9 @@ pub fn rtt_histogram() -> BusResponse {
 pub fn host_counts() -> BusResponse {
     let mut total = 0;
     let mut shaped = 0;
-    THROUGHPUT_TRACKER.read().raw_data.iter().for_each(|(_,d)| {
+    let tp = THROUGHPUT_TRACKER.read();
+    tp.raw_data.iter().filter(|(_, d)| retire_check(tp.cycle, d.most_recent_cycle))
+    .for_each(|(_,d)| {
         total += 1;
         if d.tc_handle.as_u32() != 0 {
             shaped += 1;

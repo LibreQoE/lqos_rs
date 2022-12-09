@@ -3,6 +3,7 @@ use lqos_bus::TcHandle;
 #[derive(Debug)]
 pub(crate) struct ThroughputEntry {
     pub(crate) first_cycle: u64,
+    pub(crate) most_recent_cycle: u64,
     pub(crate) bytes: (u64, u64),
     pub(crate) packets: (u64, u64),
     pub(crate) prev_bytes: (u64, u64),
