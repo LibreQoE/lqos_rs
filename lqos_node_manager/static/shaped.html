@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="/vendor/bootstrap.min.css" rel="stylesheet">
+    <title>LibreQoS - Local Node Manager</title>
+    <script src="/lqos.js"></script>
+    <script src="/vendor/plotly-2.16.1.min.js"></script>
+    <script src="/vendor/jquery.min.js"></script>
+</head>
+<body class="bg-secondary">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/"><img src="/vendor/tinylogo.svg" alt="LibreQoS SVG Logo" width="25" height="25" />&nbsp;LibreQoS</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Configuration</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Network Layout</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="#">Shaped Devices <span id="shapedCount" style="background-color: green;" class="badge badge-pill badge-success">?</span></a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Unknown IPs <span id="unshapedCount" style="background-color:darkgoldenrod" class="badge badge-warning">?</span></a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div id="container" style="padding: 4px;">
+
+        <div class="row">
+            <div class="col-sm-12">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h5 class="card-title">Shaped Devices</h5>
+                        <table class="table">
+                            <thead>
+                                <th>Circuit ID</th>
+                                <th>Circuit Name</th>
+                                <th>Device ID</th>
+                                <th>Device Name</th>
+                                <th>IP Addresses</th>
+                            </thead>
+                            <tbody id="shapedList" class="table-striped"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <footer>Copyright (c) 2022, LibreQoE LLC</footer>
+
+    <script>
+
+        function start() {
+            updateHostCounts();
+            $.get("/api/all_shaped_devices", (devices) => {
+                //console.log(devices);
+                let html = "";
+                for (let i=0; i<devices.length; i++) {
+                    html += "<tr>";
+                    html += "<td>" + devices[i].circuit_id + "</td>";
+                    html += "<td>" + devices[i].circuit_name + "</td>";
+                    html += "<td>" + devices[i].device_id + "</td>";
+                    html += "<td>" + devices[i].device_name + "</td>";
+                    html += "<td>";
+                    for (let j=0; j<devices[i].ipv4.length; j++) {
+                        html += devices[i].ipv4[j][0] + "/" + devices[i].ipv4[j][1] + " ";
+                    }
+                    for (let j=0; j<devices[i].ipv6.length; j++) {
+                        html += devices[i].ipv6[j][0] + "/" + devices[i].ipv6[j][1] + " ";
+                    }
+                    html += "</td>";
+                    html += "</tr>";
+                }
+                $("#shapedList").html(html);
+            });
+        }
+
+        $(document).ready(start);
+    </script>
+
+    <!-- Leave to last -->
+    <script src="vendor/bootstrap.bundle.min.js"></script>
+</body>
+</html>

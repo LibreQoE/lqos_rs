@@ -1,8 +1,8 @@
-use rocket::fairing::AdHoc;
-
 #[macro_use] extern crate rocket;
+use rocket::fairing::AdHoc;
 mod static_pages;
 mod tracker;
+mod shaped_devices;
 
 #[launch]
 fn rocket() -> _ {
@@ -14,6 +14,7 @@ fn rocket() -> _ {
         }))
         .mount("/", routes![
             static_pages::index,
+            static_pages::shaped_devices_csv_page,
 
             // Our JS library
             static_pages::lqos_js,
@@ -27,6 +28,7 @@ fn rocket() -> _ {
             tracker::worst_10_rtt,
             tracker::rtt_histogram,
             tracker::host_counts,
+            shaped_devices::all_shaped_devices,
 
             // Supporting files
             static_pages::bootsrap_css,

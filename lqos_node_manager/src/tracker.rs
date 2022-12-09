@@ -137,7 +137,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    static ref SHAPED_DEVICES : RwLock<ConfigShapedDevices> = RwLock::new(ConfigShapedDevices::load().unwrap());
+    pub static ref SHAPED_DEVICES : RwLock<ConfigShapedDevices> = RwLock::new(ConfigShapedDevices::load().unwrap());
 }
 
 async fn get_data_from_server() -> Result<()> {

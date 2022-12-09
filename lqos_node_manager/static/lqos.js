@@ -43,3 +43,11 @@ function bindColorToggle() {
         }
     });
 }
+
+function updateHostCounts() {
+    $.get("/api/host_counts", (hc) => {
+        $("#shapedCount").text(hc[0]);
+        $("#unshapedCount").text(hc[1]);
+        setTimeout(updateHostCounts, 5000);
+    });
+}

@@ -5,6 +5,11 @@ pub async fn index<'a>() -> Option<NamedFile> {
     NamedFile::open("static/main.html").await.ok()
 }
 
+#[get("/shaped")]
+pub async fn shaped_devices_csv_page<'a>() -> Option<NamedFile> {
+    NamedFile::open("static/shaped.html").await.ok()
+}
+
 #[get("/vendor/bootstrap.min.css")]
 pub async fn bootsrap_css<'a>() -> Option<NamedFile> {
     NamedFile::open("static/vendor/bootstrap.min.css").await.ok()

@@ -1,6 +1,7 @@
 use std::{path::{Path, PathBuf}, net::{Ipv4Addr, Ipv6Addr}};
 use anyhow::{Result, Error};
 use csv::StringRecord;
+use serde::{Serialize, Deserialize};
 use crate::etc;
 
 pub struct ConfigShapedDevices {
@@ -50,7 +51,7 @@ impl ConfigShapedDevices {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ShapedDevice {
     // Circuit ID,Circuit Name,Device ID,Device Name,Parent Node,MAC,IPv4,IPv6,Download Min Mbps,Upload Min Mbps,Download Max Mbps,Upload Max Mbps,Comment
     pub circuit_id: String,
