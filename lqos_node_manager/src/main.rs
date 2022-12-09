@@ -1,4 +1,3 @@
-use lqos_config::ConfigShapedDevices;
 use rocket::fairing::AdHoc;
 
 #[macro_use] extern crate rocket;

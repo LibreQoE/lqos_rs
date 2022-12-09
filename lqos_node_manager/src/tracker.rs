@@ -1,4 +1,4 @@
-use std::{time::Duration, net::{IpAddr, Ipv4Addr}};
+use std::{time::Duration, net::IpAddr};
 use anyhow::Result;
 use lqos_bus::{BUS_BIND_ADDRESS, BusRequest, BusSession, encode_request, decode_response, BusResponse, IpStats};
 use lqos_config::ConfigShapedDevices;
