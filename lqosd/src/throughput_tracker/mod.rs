@@ -75,6 +75,39 @@ pub fn top_n(n: u32) -> BusResponse {
     BusResponse::TopDownloaders(result)
 }
 
+pub fn worst_n(n: u32) -> BusResponse {
+    let mut full_list: Vec<(XdpIpAddress, (u64, u64), (u64, u64), f32, TcHandle)> = {
+        let tp = THROUGHPUT_TRACKER.read();
+        tp.raw_data
+            .iter()
+            .map(|(ip, te)| {
+                (
+                    *ip,
+                    te.bytes_per_second,
+                    te.packets_per_second,
+                    te.median_latency(),
+                    te.tc_handle,
+                )
+            })
+            .collect()
+    };
+    full_list.sort_by(|a, b| b.3.partial_cmp(&a.3).unwrap());
+    let result = full_list
+        .iter()
+        .take(n as usize)
+        .map(
+            |(ip, (bytes_dn, bytes_up), (packets_dn, packets_up), median_rtt, tc_handle)| IpStats {
+                ip_address: ip.as_ip().to_string(),
+                bits_per_second: (bytes_dn * 8, bytes_up * 8),
+                packets_per_second: (*packets_dn, *packets_up),
+                median_tcp_rtt: *median_rtt,
+                tc_handle: *tc_handle,
+            },
+        )
+        .collect();
+    BusResponse::WorstRtt(result)
+}
+
 pub fn xdp_pping_compat() -> BusResponse {
     let raw = THROUGHPUT_TRACKER.read();
     let result = raw.raw_data
@@ -120,9 +153,21 @@ pub fn rtt_histogram() -> BusResponse {
             let median = valid_samples[valid_samples.len() / 2] as f32 / 100.0;
             let median = f32::min(200.0, median);
             let column = (median / 10.0) as usize;
-            result[column] += 1;
+            result[usize::min(column, 19)] += 1;
         }
     }
 
     BusResponse::RttHistogram(result)
+}
+
+pub fn host_counts() -> BusResponse {
+    let mut total = 0;
+    let mut shaped = 0;
+    THROUGHPUT_TRACKER.read().raw_data.iter().for_each(|(_,d)| {
+        total += 1;
+        if d.tc_handle.as_u32() != 0 {
+            shaped += 1;
+        }
+    });
+    BusResponse::HostCounts((total, shaped))
 }

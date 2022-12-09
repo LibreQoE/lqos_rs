@@ -971,6 +971,8 @@ name = "lqos_config"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "serde",
+ "toml",
 ]
 
 [[package]]
@@ -980,6 +982,7 @@ dependencies = [
  "anyhow",
  "lazy_static",
  "lqos_bus",
+ "lqos_config",
  "parking_lot 0.12.1",
  "rocket",
  "sysinfo",

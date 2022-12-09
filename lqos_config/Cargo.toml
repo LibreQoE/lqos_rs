@@ -5,3 +5,5 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1"
+toml = "0.5"
+serde = "1.0"

@@ -6,6 +6,7 @@ mod tracker;
 
 #[launch]
 fn rocket() -> _ {
+    //let cfg = lqos_config::LibreQoSConfig::load().unwrap();
     rocket::build()
         .attach(AdHoc::on_liftoff("Poll lqosd", |_| {
             Box::pin(async move {
@@ -24,7 +25,9 @@ fn rocket() -> _ {
             tracker::cpu_usage,
             tracker::ram_usage,
             tracker::top_10_downloaders,
+            tracker::worst_10_rtt,
             tracker::rtt_histogram,
+            tracker::host_counts,
 
             // Supporting files
             static_pages::bootsrap_css,

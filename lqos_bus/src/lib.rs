@@ -18,6 +18,7 @@ pub enum BusRequest {
     Ping, // A generic "is it alive" test
     GetCurrentThroughput,
     GetTopNDownloaders(u32),
+    GetWorstRtt(u32),
     MapIpToFlow {
         ip_address: String,
         tc_handle: TcHandle,
@@ -32,6 +33,7 @@ pub enum BusRequest {
     ListIpFlow,
     XdpPping,
     RttHistogram,
+    HostCounts,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -49,9 +51,11 @@ pub enum BusResponse {
         packets_per_second: (u64, u64),
     },
     TopDownloaders(Vec<IpStats>),
+    WorstRtt(Vec<IpStats>),
     MappedIps(Vec<IpMapping>),
     XdpPping(Vec<XdpPpingResult>),
     RttHistogram(Vec<u32>),
+    HostCounts((u32, u32)),
 }
 
 pub fn encode_request(request: &BusSession) -> Result<Vec<u8>> {

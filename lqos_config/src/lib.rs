@@ -1,7 +1,6 @@
 use anyhow::{Error, Result};
-use std::{fs, path::Path};
-
-const DEFAULT_DIR: &str = "/opt/libreqos/v1.3/ispConfig.py";
+use std::{fs, path::{Path, PathBuf}};
+mod etc;
 
 pub struct LibreQoSConfig {
     pub internet_interface: String,
@@ -11,24 +10,14 @@ pub struct LibreQoSConfig {
 }
 
 impl LibreQoSConfig {
-    pub fn load_from_default() -> Result<Self> {
-        let path = Path::new(DEFAULT_DIR);
-        if !path.exists() {
-            return Err(Error::msg("Unable to find ispConfig.py"));
-        }
-
-        // Read the config
-        let mut result = Self {
-            internet_interface: String::new(),
-            isp_interface: String::new(),
-            on_a_stick_mode: false,
-            stick_vlans: (0,0),
-        };
-        result.parse_isp_config(path)?;
-        Ok(result)
+    pub fn load() -> Result<Self> {
+        let cfg = etc::EtcLqos::load()?;
+        let base_path = Path::new(&cfg.lqos_directory);
+        let final_path = base_path.join("ispConfig.py");
+        Ok(Self::load_from_path(&final_path)?)
     }
 
-    pub fn load_from_path(path: &str) -> Result<Self> {
+    fn load_from_path(path: &PathBuf) -> Result<Self> {
         let path = Path::new(path);
         if !path.exists() {
             return Err(Error::msg("Unable to find ispConfig.py"));

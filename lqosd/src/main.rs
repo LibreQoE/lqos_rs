@@ -16,7 +16,7 @@ use tokio::{
 #[tokio::main]
 async fn main() -> Result<()> {
     println!("LibreQoS Daemon Starting");
-    let config = LibreQoSConfig::load_from_default()?;
+    let config = LibreQoSConfig::load()?;
     let kernels = if config.on_a_stick_mode {
         // Hack: Turn off RXVLAN
         std::process::Command::new("ethtool")
@@ -65,6 +65,7 @@ async fn main() -> Result<()> {
                                 throughput_tracker::current_throughput()
                             }
                             BusRequest::GetTopNDownloaders(n) => throughput_tracker::top_n(*n),
+                            BusRequest::GetWorstRtt(n) => throughput_tracker::worst_n(*n),
                             BusRequest::MapIpToFlow {
                                 ip_address,
                                 tc_handle,
@@ -76,6 +77,7 @@ async fn main() -> Result<()> {
                             BusRequest::ListIpFlow => list_mapped_ips(),
                             BusRequest::XdpPping => throughput_tracker::xdp_pping_compat(),
                             BusRequest::RttHistogram => throughput_tracker::rtt_histogram(),
+                            BusRequest::HostCounts => throughput_tracker::host_counts(),
                         });
                     }
                     //println!("{:?}", response);

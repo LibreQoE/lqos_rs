@@ -104,7 +104,15 @@ lazy_static! {
 }
 
 lazy_static! {
+    static ref WORST_10_RTT : RwLock<Vec<IpStats>> = RwLock::new(Vec::new());
+}
+
+lazy_static! {
     static ref RTT_HISTOGRAM : RwLock<Vec<u32>> = RwLock::new(Vec::new());
+}
+
+lazy_static! {
+    static ref HOST_COUNTS : RwLock<(u32, u32)> = RwLock::new((0, 0));
 }
 
 async fn get_data_from_server() -> Result<()> {
@@ -115,7 +123,9 @@ async fn get_data_from_server() -> Result<()> {
         requests: vec![
             BusRequest::GetCurrentThroughput,
             BusRequest::GetTopNDownloaders(10),
+            BusRequest::GetWorstRtt(10),
             BusRequest::RttHistogram,
+            BusRequest::HostCounts,
         ],
     };
     let msg = encode_request(&test)?;
@@ -149,8 +159,14 @@ async fn get_data_from_server() -> Result<()> {
             BusResponse::TopDownloaders(stats) => {
                 *TOP_10_DOWNLOADERS.write() = stats.clone();
             }
+            BusResponse::WorstRtt(stats) => {
+                *WORST_10_RTT.write() = stats.clone();
+            }
             BusResponse::RttHistogram(stats) => {
                 *RTT_HISTOGRAM.write() = stats.clone();
+            }
+            BusResponse::HostCounts((total, shaped)) => {
+                *HOST_COUNTS.write() = (*total, *shaped);
             }
             // Default
             _ => {}
@@ -190,7 +206,18 @@ pub fn top_10_downloaders() -> Json<Vec<IpStats>> {
     Json(TOP_10_DOWNLOADERS.read().clone())
 }
 
+#[get("/api/worst_10_rtt")]
+pub fn worst_10_rtt() -> Json<Vec<IpStats>> {
+    Json(WORST_10_RTT.read().clone())
+}
+
+
 #[get("/api/rtt_histogram")]
 pub fn rtt_histogram() -> Json<Vec<u32>> {
     Json(RTT_HISTOGRAM.read().clone())
+}
+
+#[get("/api/host_counts")]
+pub fn host_counts() -> Json<(u32, u32)> {
+    Json(*HOST_COUNTS.read())
 }

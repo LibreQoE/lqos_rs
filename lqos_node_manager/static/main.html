@@ -23,7 +23,16 @@
                         <a class="nav-link active" aria-current="page" href="/">Dashboard</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">Another Option</a>
+                        <a class="nav-link" href="#">Configuration</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Network Layout</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Shaped Devices <span id="shapedCount" style="background-color: green;" class="badge badge-pill badge-success">?</span></a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Unknown IPs <span id="unshapedCount" style="background-color:darkgoldenrod" class="badge badge-warning">?</span></a>
                     </li>
                 </ul>
             </div>
@@ -101,11 +110,22 @@
 
     <!-- Dashboard Row 3 -->
     <div class="row">
+        <!-- Top 10 downloaders -->
         <div class="col-sm-6">
             <div class="card bg-light">
                 <div class="card-body">
                     <h5 class="card-title">Top 10 Downloaders</h5>
                     <div id="top10dl"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Worst 10 RTT -->
+        <div class="col-sm-6">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">Worst 10 RTT</h5>
+                    <div id="worstRtt"></div>
                 </div>
             </div>
         </div>
@@ -211,6 +231,33 @@
             });
         }
 
+        function updateWorst10() {
+            $.get("/api/worst_10_rtt", (tt) => {
+                let html = "<table class='table'>";
+                html += "<thead><th>IP Address</th><th>DL ⬇️</th><th>UL ⬆️</th><th>PPS ⬇️</th><th>PPS ⬆️</th><th>RTT (ms)</th><th>Shaped</th></thead>";
+                for (let i=0; i<tt.length; i++) {
+                    let color = "#ddd";
+                    if (tt[i].tc_handle !=0) color = "#ddffdd";
+                    html += "<tr style='background-color: " + color + "'>";
+                    html += "<td>" + tt[i].ip_address + "</td>";
+                    html += "<td>" + scaleNumber(tt[i].bits_per_second[0]) + "</td>";
+                    html += "<td>" + scaleNumber(tt[i].bits_per_second[1]) + "</td>";
+                    html += "<td>" + scaleNumber(tt[i].packets_per_second[0]) + "</td>";
+                    html += "<td>" + scaleNumber(tt[i].packets_per_second[1]) + "</td>";
+                    html += "<td>" + tt[i].median_tcp_rtt.toFixed(2) + "</td>";
+                    if (tt[i].tc_handle !=0) {
+                        html += "<td>✅</td>";
+                    } else {
+                        html += "<td></td>";
+                    }
+                    html += "</tr>";
+                }
+                html += "</table>";
+                $("#worstRtt").html(html);
+                setTimeout(updateTop10, 5000);
+            });
+        }
+
         function updateHistogram() {
             $.get("/api/rtt_histogram", (rtt) => {
                 let graph = document.getElementById("rttHistogram");
@@ -228,13 +275,23 @@
             });
         }
 
+        function updateHostCounts() {
+            $.get("/api/host_counts", (hc) => {
+                $("#shapedCount").text(hc[1]);
+                $("#unshapedCount").text(hc[0] - hc[1]);
+                setTimeout(updateHostCounts, 5000);
+            });
+        }
+
         function start() {
             updateCurrentThroughput();
             updateThroughputGraph();
             updateCpu();
             updateRam();
             updateTop10();
+            updateWorst10();
             updateHistogram();
+            updateHostCounts();
         }
 
         console.log("hello");
