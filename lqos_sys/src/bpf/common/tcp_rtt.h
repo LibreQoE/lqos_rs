@@ -672,7 +672,7 @@ static __always_inline void tc_pping_start(struct parsing_context *context)
                 // usable again.
                 //bpf_debug("Recycling flow, %u > %u", context->now, perf->recycle_time);
                 __builtin_memset(perf->rtt, 0, sizeof(__u32) * MAX_PERF_SECONDS);
-                perf->recycle_time = context->now + NS_PER_30_SECONDS;
+                perf->recycle_time = context->now + RECYCLE_RTT_INTERVAL;
                 perf->next_entry = 0;
                 perf->has_fresh_data = 0;
             }
@@ -719,7 +719,7 @@ static __always_inline void tc_pping_start(struct parsing_context *context)
     if (perf == NULL)
     {
         struct rotating_performance new_perf = {0};
-        new_perf.recycle_time = context->now + NS_PER_30_SECONDS;
+        new_perf.recycle_time = context->now + RECYCLE_RTT_INTERVAL;
         new_perf.has_fresh_data = 0;
         if (bpf_map_update_elem(&rtt_tracker, context->active_host, &new_perf, BPF_NOEXIST) != 0) return;
     }

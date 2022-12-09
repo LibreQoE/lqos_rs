@@ -21,7 +21,7 @@ My modifications are Copyright 2022, Herbert Wolverson
 #define NS_PER_MS 1000000UL
 #define NS_PER_MS_TIMES_100 10000UL
 #define NS_PER_SECOND NS_PER_MS 1000000000UL
-#define NS_PER_30_SECONDS 30000000000UL
+#define RECYCLE_RTT_INTERVAL 10000000000UL
 
 /* Quick way to access a TC handle as either two 16-bit numbers or a single u32 */
 union tc_handle_type
