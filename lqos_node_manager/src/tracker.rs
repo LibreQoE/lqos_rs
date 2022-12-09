@@ -250,5 +250,9 @@ pub fn rtt_histogram() -> Json<Vec<u32>> {
 
 #[get("/api/host_counts")]
 pub fn host_counts() -> Json<(u32, u32)> {
-    Json(*HOST_COUNTS.read())
+    let shaped_reader = SHAPED_DEVICES.read();
+    let n_devices = shaped_reader.devices.len();
+    let host_counts = HOST_COUNTS.read();
+    let unknown = host_counts.0 - host_counts.1;
+    Json((n_devices as u32, unknown))
 }
