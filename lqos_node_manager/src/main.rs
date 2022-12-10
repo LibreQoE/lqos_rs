@@ -39,6 +39,9 @@ fn rocket() -> _ {
             static_pages::bootsrap_js,
             static_pages::tinylogo,
             static_pages::favicon,
+            static_pages::fontawesome_solid,
+            static_pages::fontawesome_webfont,
+            static_pages::fontawesome_woff,
         ]
     );
     

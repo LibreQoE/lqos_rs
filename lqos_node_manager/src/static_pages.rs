@@ -51,3 +51,19 @@ pub async fn tinylogo<'a>() -> LongCache<Option<NamedFile>> {
 pub async fn favicon<'a>() -> LongCache<Option<NamedFile>> {
     LongCache::new(NamedFile::open("static/favicon.ico").await.ok())
 }
+
+/// FontAwesome icons
+#[get("/vendor/solid.min.css")]
+pub async fn fontawesome_solid<'a>() -> LongCache<Option<NamedFile>> {
+    LongCache::new(NamedFile::open("static/vendor/solid.min.css").await.ok())
+}
+
+#[get("/fonts/fontawesome-webfont.ttf")]
+pub async fn fontawesome_webfont<'a>() -> LongCache<Option<NamedFile>> {
+    LongCache::new(NamedFile::open("static/vendor/fa-webfont.ttf").await.ok())
+}
+
+#[get("/fonts/fontawesome-webfont.woff2")]
+pub async fn fontawesome_woff<'a>() -> LongCache<Option<NamedFile>> {
+    LongCache::new(NamedFile::open("static/vendor/fa-webfont.ttf").await.ok())
+}
