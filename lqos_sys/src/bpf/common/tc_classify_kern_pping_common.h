@@ -18,8 +18,8 @@ My modifications are Copyright 2022, Herbert Wolverson
 
 /* 30 second rotating performance buffer, per-TC handle */
 #define MAX_PERF_SECONDS 60
-#define NS_PER_MS 1000000UL
-#define NS_PER_MS_TIMES_100 10000UL
+#define NS_PER_MS            1000000UL
+#define NS_PER_MS_TIMES_100    10000UL
 #define NS_PER_SECOND NS_PER_MS 1000000000UL
 #define RECYCLE_RTT_INTERVAL 10000000000UL
 

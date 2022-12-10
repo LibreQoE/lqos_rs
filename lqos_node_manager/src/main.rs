@@ -4,10 +4,11 @@ mod static_pages;
 mod tracker;
 mod shaped_devices;
 mod cache_control;
+use rocket_async_compression::Compression;
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build()
+    let server = rocket::build()
         .attach(AdHoc::on_liftoff("Poll lqosd", |_| {
             Box::pin(async move {
                 rocket::tokio::spawn(tracker::update_tracking());
@@ -38,5 +39,14 @@ fn rocket() -> _ {
             static_pages::bootsrap_js,
             static_pages::tinylogo,
             static_pages::favicon,
-        ])
+        ]
+    );
+    
+    // Compression is slow in debug builds,
+    // so only enable it on release builds.
+    if cfg!(debug_assertions) {
+        server
+    } else {
+        server.attach(Compression::fairing())
+    }
 }
