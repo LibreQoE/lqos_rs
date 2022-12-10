@@ -58,6 +58,11 @@
                             </thead>
                             <tbody id="shapedList" class="table-striped"></tbody>
                         </table>
+
+                        <p>
+                            Go to page: <span id="shapedPaginator"></span><br />
+                            Total Shaped Devices: <span id="shapedTotal"></span>
+                        </p>
                     </div>
                 </div>
             </div>
@@ -68,30 +73,47 @@
     <footer>Copyright (c) 2022, LibreQoE LLC</footer>
 
     <script>
+        function fillDeviceTable(devices) {
+            let html = "";
+            for (let i=0; i<devices.length; i++) {
+                html += "<tr>";
+                html += "<td>" + devices[i].circuit_id + "</td>";
+                html += "<td>" + devices[i].circuit_name + "</td>";
+                html += "<td>" + devices[i].device_id + "</td>";
+                html += "<td>" + devices[i].device_name + "</td>";
+                html += "<td>";
+                for (let j=0; j<devices[i].ipv4.length; j++) {
+                    html += devices[i].ipv4[j][0] + "/" + devices[i].ipv4[j][1] + " ";
+                }
+                for (let j=0; j<devices[i].ipv6.length; j++) {
+                    html += devices[i].ipv6[j][0] + "/" + devices[i].ipv6[j][1] + " ";
+                }
+                html += "</td>";
+                html += "<td><a class='btn btn-primary btn-sm' href='#'><i class='fa fa-pencil'></i> Edit</a> <a href='#' class='btn btn-danger btn-sm'><i class='fa fa-trash'></i> Delete</a></td>";
+                html += "</tr>";
+            }
+            $("#shapedList").html(html);
+        }
+
+        function paginator(page) {
+            $.get("/api/shaped_devices_range/" + page * 25 + "/" + (page+1)*25, (devices) => {
+                fillDeviceTable(devices);
+            });
+        }
 
         function start() {
             updateHostCounts();
-            $.get("/api/all_shaped_devices", (devices) => {
-                //console.log(devices);
-                let html = "";
-                for (let i=0; i<devices.length; i++) {
-                    html += "<tr>";
-                    html += "<td>" + devices[i].circuit_id + "</td>";
-                    html += "<td>" + devices[i].circuit_name + "</td>";
-                    html += "<td>" + devices[i].device_id + "</td>";
-                    html += "<td>" + devices[i].device_name + "</td>";
-                    html += "<td>";
-                    for (let j=0; j<devices[i].ipv4.length; j++) {
-                        html += devices[i].ipv4[j][0] + "/" + devices[i].ipv4[j][1] + " ";
-                    }
-                    for (let j=0; j<devices[i].ipv6.length; j++) {
-                        html += devices[i].ipv6[j][0] + "/" + devices[i].ipv6[j][1] + " ";
-                    }
-                    html += "</td>";
-                    html += "<td><a href='#'>📝</a> <a href='#'>🗑️</a></td>";
-                    html += "</tr>";
+            $.get("/api/shaped_devices_count", (count) => {
+                let n_pages = count / 25;
+                $("#shapedTotal").text(count);
+                let paginator = "";
+                for (let i=0; i<n_pages; i++) {
+                    paginator += "<a href='#' onclick='paginator(" + i + ")'>" + (i+1) + "</a> ";
                 }
-                $("#shapedList").html(html);
+                $("#shapedPaginator").html(paginator);
+            });
+            $.get("/api/shaped_devices_range/0/25", (devices) => {
+                fillDeviceTable(devices);
             });
         }
 

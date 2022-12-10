@@ -31,6 +31,8 @@ fn rocket() -> _ {
             tracker::rtt_histogram,
             tracker::host_counts,
             shaped_devices::all_shaped_devices,
+            shaped_devices::shaped_devices_count,
+            shaped_devices::shaped_devices_range,
 
             // Supporting files
             static_pages::bootsrap_css,
