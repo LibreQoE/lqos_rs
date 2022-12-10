@@ -40,7 +40,7 @@
                     <a class="nav-link" href="#"><i class="fa fa-gear"></i> Configuration</a>
                 </li>
                 <li>
-                    <a class="nav-link btn-secondary btn btn-small" href="#"><i class="fa fa-refresh"></i> Reload LibreQoS</a>
+                    <a class="nav-link btn btn-small" href="#" id="btnReload"><i class="fa fa-refresh"></i> Reload LibreQoS</a>
                 </li>
             </ul>
         </div>
@@ -195,7 +195,7 @@
                     y.push(cpu[i]);
                 }
                 let data = [ {x: x, y:y, type: 'bar' } ];
-                Plotly.newPlot(graph, data, { margin: { l:0,r:0,b:0,t:0 }, yaxis: { automargin: true, autorange: false, range: [0.0, 100.0 ] } });
+                Plotly.newPlot(graph, data, { margin: { l:0,r:0,b:15,t:0 }, yaxis: { automargin: true, autorange: false, range: [0.0, 100.0 ] } });
                 setTimeout(updateCpu, 2000);
             });
         }
@@ -283,6 +283,7 @@
         }
 
         function start() {
+            colorReloadButton();
             updateCurrentThroughput();
             updateThroughputGraph();
             updateCpu();

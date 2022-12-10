@@ -41,7 +41,7 @@
                     <a class="nav-link" href="#"><i class="fa fa-gear"></i> Configuration</a>
                 </li>
                 <li>
-                    <a class="nav-link btn-secondary btn btn-small" style="color: black" href="#"><i class="fa fa-refresh"></i> Reload LibreQoS</a>
+                    <a class="nav-link btn btn-small" style="color: black" href="#" id="btnReload"><i class="fa fa-refresh"></i> Reload LibreQoS</a>
                 </li>
             </ul>
         </div>
@@ -109,6 +109,7 @@
         }
 
         function start() {
+            colorReloadButton();
             updateHostCounts();
             $.get("/api/shaped_devices_count", (count) => {
                 let n_pages = count / 25;

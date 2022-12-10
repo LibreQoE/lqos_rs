@@ -51,3 +51,17 @@ function updateHostCounts() {
         setTimeout(updateHostCounts, 5000);
     });
 }
+
+function colorReloadButton() {
+    $("#btnReload").on('click', () => {
+        alert("I promise to write this soon");
+    });
+    $.get("/api/reload_required", (req) => {
+        if (req) {
+            $("#btnReload").addClass('btn-warning');
+            $("#btnReload").css('color', 'darkred');
+        } else {
+            $("#btnReload").addClass('btn-secondary');
+        }
+    })
+}
