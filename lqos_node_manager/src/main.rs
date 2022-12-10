@@ -3,6 +3,7 @@ use rocket::fairing::AdHoc;
 mod static_pages;
 mod tracker;
 mod shaped_devices;
+mod cache_control;
 
 #[launch]
 fn rocket() -> _ {

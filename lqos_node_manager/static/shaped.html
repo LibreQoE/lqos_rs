@@ -53,6 +53,7 @@
                                 <th>Device ID</th>
                                 <th>Device Name</th>
                                 <th>IP Addresses</th>
+                                <th></th>
                             </thead>
                             <tbody id="shapedList" class="table-striped"></tbody>
                         </table>
@@ -86,6 +87,7 @@
                         html += devices[i].ipv6[j][0] + "/" + devices[i].ipv6[j][1] + " ";
                     }
                     html += "</td>";
+                    html += "<td><a href='#'>📝</a> <a href='#'>🗑️</a></td>";
                     html += "</tr>";
                 }
                 $("#shapedList").html(html);
