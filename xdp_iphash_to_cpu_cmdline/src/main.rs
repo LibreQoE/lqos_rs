@@ -95,9 +95,9 @@ fn print_ips(ips: &[IpMapping]) {
 }
 
 fn parse_add_ip(ip: &str, classid: &str, cpu: &str, upload: &Option<String>) -> Result<BusRequest> {
-    if ip.parse::<IpAddr>().is_err() {
-        return Err(Error::msg("Unable to parse IP address"));
-    }
+    //if ip.parse::<IpAddr>().is_err() {
+    //    return Err(Error::msg(format!("Unable to parse IP address: {ip}")));
+    //}
     if !classid.contains(":") {
         return Err(Error::msg(
             "Class id must be in the format (major):(minor), e.g. 1:12",
