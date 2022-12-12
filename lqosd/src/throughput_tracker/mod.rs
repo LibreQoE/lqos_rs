@@ -206,7 +206,7 @@ pub fn all_unknown_ips() -> BusResponse {
             })
             .collect()
     };
-    full_list.sort_by(|a, b| a.5.partial_cmp(&b.5).unwrap());
+    full_list.sort_by(|a, b| b.5.partial_cmp(&a.5).unwrap());
     let result = full_list
         .iter()
         .map(

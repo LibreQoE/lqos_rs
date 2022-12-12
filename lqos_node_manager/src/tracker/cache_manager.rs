@@ -1,9 +1,9 @@
 //! The Cache mod stores data that is periodically updated
 //! on the server-side, to avoid re-requesting repeatedly
 //! when there are multiple clients.
-use std::time::Duration;
+use std::{time::Duration, net::IpAddr};
 use anyhow::Result;
-use lqos_bus::{BUS_BIND_ADDRESS, BusSession, BusRequest, encode_request, BusResponse, decode_response};
+use lqos_bus::{BUS_BIND_ADDRESS, BusSession, BusRequest, encode_request, BusResponse, decode_response, IpStats};
 use lqos_config::ConfigShapedDevices;
 use rocket::tokio::{task::spawn_blocking, net::TcpStream, io::{AsyncWriteExt, AsyncReadExt}};
 use super::cache::*;
@@ -116,7 +116,20 @@ async fn get_data_from_server() -> Result<()> {
             }
             BusResponse::AllUnknownIps(unknowns) => {
                 *HOST_COUNTS.write() = (unknowns.len() as u32, 0);
-                *UNKNOWN_DEVICES.write() = unknowns.clone();
+                let cfg = SHAPED_DEVICES.read();
+                let really_unknown: Vec<IpStats> = unknowns.iter().filter(|ip| {
+                    if let Ok(ip) = ip.ip_address.parse::<IpAddr>() {
+                        let lookup = match ip {
+                            IpAddr::V4(ip) => ip.to_ipv6_mapped(),
+                            IpAddr::V6(ip) => ip,
+                        };
+                        cfg.trie.longest_match(lookup).is_none()
+                    } else {
+                        false
+                    }
+                }).cloned().collect();
+                *HOST_COUNTS.write() = (really_unknown.len() as u32, 0);
+                *UNKNOWN_DEVICES.write() = really_unknown;
             }
             // Default
             _ => {}
