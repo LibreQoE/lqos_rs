@@ -9,6 +9,7 @@ use rocket_async_compression::Compression;
 
 #[launch]
 fn rocket() -> _ {
+    //tracker::SHAPED_DEVICES.read().write_csv("ShapedDeviceWriteTest.csv").unwrap();
     let server = rocket::build()
         .attach(AdHoc::on_liftoff("Poll lqosd", |_| {
             Box::pin(async move {
