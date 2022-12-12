@@ -3,6 +3,7 @@ use rocket::fairing::AdHoc;
 mod static_pages;
 mod tracker;
 mod shaped_devices;
+mod unknown_devices;
 mod cache_control;
 use rocket_async_compression::Compression;
 
@@ -18,6 +19,7 @@ fn rocket() -> _ {
             static_pages::index,
             static_pages::shaped_devices_csv_page,
             static_pages::shaped_devices_add_page,
+            static_pages::unknown_devices_page,
 
             // Our JS library
             static_pages::lqos_js,
@@ -36,6 +38,9 @@ fn rocket() -> _ {
             shaped_devices::shaped_devices_range,
             shaped_devices::reload_required,
             shaped_devices::shaped_devices_search,
+            unknown_devices::all_unknown_devices,
+            unknown_devices::unknown_devices_count,
+            unknown_devices::unknown_devices_range,
 
             // Supporting files
             static_pages::bootsrap_css,

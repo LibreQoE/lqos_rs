@@ -186,3 +186,37 @@ pub fn host_counts() -> BusResponse {
     });
     BusResponse::HostCounts((total, shaped))
 }
+
+pub fn all_unknown_ips() -> BusResponse {
+    let mut full_list: Vec<(XdpIpAddress, (u64, u64), (u64, u64), f32, TcHandle)> = {
+        let tp = THROUGHPUT_TRACKER.read();
+        tp.raw_data
+            .iter()
+            .filter(|(ip, _)| !ip.as_ip().is_loopback())
+            .filter(|(_, d)| d.tc_handle.as_u32() == 0)
+            .map(|(ip, te)| {
+                (
+                    *ip,
+                    te.bytes_per_second,
+                    te.packets_per_second,
+                    te.median_latency(),
+                    te.tc_handle,
+                )
+            })
+            .collect()
+    };
+    full_list.sort_by(|a, b| b.3.partial_cmp(&a.3).unwrap());
+    let result = full_list
+        .iter()
+        .map(
+            |(ip, (bytes_dn, bytes_up), (packets_dn, packets_up), median_rtt, tc_handle)| IpStats {
+                ip_address: ip.as_ip().to_string(),
+                bits_per_second: (bytes_dn * 8, bytes_up * 8),
+                packets_per_second: (*packets_dn, *packets_up),
+                median_tcp_rtt: *median_rtt,
+                tc_handle: *tc_handle,
+            },
+        )
+        .collect();
+    BusResponse::AllUnknownIps(result)
+}

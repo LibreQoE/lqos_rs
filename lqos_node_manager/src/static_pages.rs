@@ -17,6 +17,13 @@ pub async fn shaped_devices_csv_page<'a>() -> NoCache<Option<NamedFile>> {
 
 // Note that NoCache can be replaced with a cache option
 // once the design work is complete.
+#[get("/unknown")]
+pub async fn unknown_devices_page<'a>() -> NoCache<Option<NamedFile>> {
+    NoCache::new(NamedFile::open("static/unknown-ip.html").await.ok())
+}
+
+// Note that NoCache can be replaced with a cache option
+// once the design work is complete.
 #[get("/shaped-add")]
 pub async fn shaped_devices_add_page<'a>() -> NoCache<Option<NamedFile>> {
     NoCache::new(NamedFile::open("static/shaped-add.html").await.ok())

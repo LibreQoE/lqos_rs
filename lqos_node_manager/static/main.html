@@ -30,7 +30,7 @@
                         <a class="nav-link" href="/shaped"><i class="fa fa-users"></i> Shaped Devices <span id="shapedCount" style="background-color: green;" class="badge badge-pill badge-success">?</span></a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#"><i class="fa fa-address-card"></i> Unknown IPs <span id="unshapedCount" style="background-color:darkgoldenrod" class="badge badge-warning">?</span></a>
+                        <a class="nav-link" href="/unknown"><i class="fa fa-address-card"></i> Unknown IPs <span id="unshapedCount" style="background-color:darkgoldenrod" class="badge badge-warning">?</span></a>
                     </li>
                 </ul>
             </div>
@@ -143,17 +143,6 @@
     <footer>Copyright (c) 2022, LibreQoE LLC</footer>
 
     <script>
-        function scaleNumber(n) {
-            if (n > 1000000000) {
-                return (n/1000000000).toFixed(2) + "G";
-            } else if (n > 1000000) {
-                return (n/1000000).toFixed(2) + "M";
-            } else if (n > 1000) {
-                return (n/1000).toFixed(2) + "K";
-            }
-            return n;
-        }
-
         function updateCurrentThroughput() {
             $.get("/api/current_throughput", (tp) => {
                 $("#ppsDown").text(scaleNumber(tp.packets_per_second[0]));

@@ -1,6 +1,6 @@
 mod cache_manager;
 mod cache;
-pub use cache::SHAPED_DEVICES;
+pub use cache::{SHAPED_DEVICES, UNKNOWN_DEVICES};
 pub use cache_manager::update_tracking;
 use std::net::IpAddr;
 use lqos_bus::{IpStats, TcHandle};

@@ -78,6 +78,7 @@ async fn main() -> Result<()> {
                             BusRequest::XdpPping => throughput_tracker::xdp_pping_compat(),
                             BusRequest::RttHistogram => throughput_tracker::rtt_histogram(),
                             BusRequest::HostCounts => throughput_tracker::host_counts(),
+                            BusRequest::AllUnknownIps => throughput_tracker::all_unknown_ips(),
                         });
                     }
                     //println!("{:?}", response);

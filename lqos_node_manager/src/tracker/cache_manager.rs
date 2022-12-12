@@ -74,7 +74,7 @@ async fn get_data_from_server() -> Result<()> {
             BusRequest::GetTopNDownloaders(10),
             BusRequest::GetWorstRtt(10),
             BusRequest::RttHistogram,
-            BusRequest::HostCounts,
+            BusRequest::AllUnknownIps,
         ],
     };
     let msg = encode_request(&test)?;
@@ -114,8 +114,9 @@ async fn get_data_from_server() -> Result<()> {
             BusResponse::RttHistogram(stats) => {
                 *RTT_HISTOGRAM.write() = stats.clone();
             }
-            BusResponse::HostCounts((total, shaped)) => {
-                *HOST_COUNTS.write() = (*total, *shaped);
+            BusResponse::AllUnknownIps(unknowns) => {
+                *HOST_COUNTS.write() = (unknowns.len() as u32, 0);
+                *UNKNOWN_DEVICES.write() = unknowns.clone();
             }
             // Default
             _ => {}

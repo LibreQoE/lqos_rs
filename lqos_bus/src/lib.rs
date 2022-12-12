@@ -34,6 +34,7 @@ pub enum BusRequest {
     XdpPping,
     RttHistogram,
     HostCounts,
+    AllUnknownIps,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -56,6 +57,7 @@ pub enum BusResponse {
     XdpPping(Vec<XdpPpingResult>),
     RttHistogram(Vec<u32>),
     HostCounts((u32, u32)),
+    AllUnknownIps(Vec<IpStats>)
 }
 
 pub fn encode_request(request: &BusSession) -> Result<Vec<u8>> {
