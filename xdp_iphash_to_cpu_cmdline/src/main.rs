@@ -4,7 +4,7 @@ use lqos_bus::{
     decode_response, encode_request, BusRequest, BusResponse, BusSession, IpMapping,
     BUS_BIND_ADDRESS, TcHandle,
 };
-use std::{net::IpAddr, process::exit};
+use std::process::exit;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
