@@ -54,16 +54,15 @@
                 <div class="card bg-light">
                     <div class="card-body">
                         <h5 class="card-title"><i class="fa fa-users"></i> Shaped Devices</h5>
-                        <table class="table">
+                        <table class="table table-striped">
                             <thead>
-                                <th>Circuit ID</th>
-                                <th>Circuit Name</th>
-                                <th>Device ID</th>
-                                <th>Device Name</th>
-                                <th>IP Addresses</th>
-                                <th></th>
+                                <th>Circuit</th>
+                                <th>Device</th>
+                                <th>Plan</th>
+                                <th>IPs</th>
+                                <th><i class="fa fa-gear"></i></th>
                             </thead>
-                            <tbody id="shapedList" class="table-striped"></tbody>
+                            <tbody id="shapedList"></tbody>
                         </table>
 
                         <p>
@@ -84,19 +83,19 @@
             let html = "";
             for (let i=0; i<devices.length; i++) {
                 html += "<tr>";
-                html += "<td>" + devices[i].circuit_id + "</td>";
-                html += "<td>" + devices[i].circuit_name + "</td>";
-                html += "<td>" + devices[i].device_id + "</td>";
-                html += "<td>" + devices[i].device_name + "</td>";
-                html += "<td>";
+                html += "<td>" + devices[i].circuit_id + ": " +devices[i].circuit_name + "</td>";
+                html += "<td>" + devices[i].device_id + ": " + devices[i].device_name + "</td>";
+                html += "<td>" + devices[i].download_min_mbps + "/" + devices[i].upload_max_mbps + "</td>";
+                html += "<td style='font-size: 8pt'>";
                 for (let j=0; j<devices[i].ipv4.length; j++) {
-                    html += devices[i].ipv4[j][0] + "/" + devices[i].ipv4[j][1] + " ";
+                    html += devices[i].ipv4[j][0] + "/" + devices[i].ipv4[j][1] + "<br />";
                 }
                 for (let j=0; j<devices[i].ipv6.length; j++) {
-                    html += devices[i].ipv6[j][0] + "/" + devices[i].ipv6[j][1] + " ";
+                    html += devices[i].ipv6[j][0] + "/" + devices[i].ipv6[j][1] + "<br />";
                 }
                 html += "</td>";
-                html += "<td><a class='btn btn-primary btn-sm' href='#'><i class='fa fa-pencil'></i> Edit</a> <a href='#' class='btn btn-danger btn-sm'><i class='fa fa-trash'></i> Delete</a></td>";
+                html += "<td><a class='btn btn-primary btn-sm' href='#'><i class='fa fa-pencil'></i></a>";
+                html +=" <a href='#' class='btn btn-danger btn-sm'><i class='fa fa-trash'></i></a></td>";
                 html += "</tr>";
             }
             $("#shapedList").html(html);
