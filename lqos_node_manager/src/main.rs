@@ -17,6 +17,7 @@ fn rocket() -> _ {
         .mount("/", routes![
             static_pages::index,
             static_pages::shaped_devices_csv_page,
+            static_pages::shaped_devices_add_page,
 
             // Our JS library
             static_pages::lqos_js,
