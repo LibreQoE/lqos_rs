@@ -216,18 +216,16 @@
         function updateTop10() {
             $.get("/api/top_10_downloaders", (tt) => {
                 let html = "<table class='table'>";
-                html += "<thead><th>IP Address</th><th>DL ⬇️</th><th>UL ⬆️</th><th>PPS ⬇️</th><th>PPS ⬆️</th><th>RTT (ms)</th><th>Shaped</th></thead>";
+                html += "<thead><th>IP Address</th><th>DL ⬇️</th><th>UL ⬆️</th><th>RTT (ms)</th><th>Shaped</th></thead>";
                 for (let i=0; i<tt.length; i++) {
                     let color = color_ramp(tt[i].median_tcp_rtt);
                     html += "<tr style='background-color: " + color + "'>";
                     html += "<td>" + tt[i].ip_address + "</td>";
                     html += "<td>" + scaleNumber(tt[i].bits_per_second[0]) + "</td>";
                     html += "<td>" + scaleNumber(tt[i].bits_per_second[1]) + "</td>";
-                    html += "<td>" + scaleNumber(tt[i].packets_per_second[0]) + "</td>";
-                    html += "<td>" + scaleNumber(tt[i].packets_per_second[1]) + "</td>";
                     html += "<td>" + tt[i].median_tcp_rtt.toFixed(2) + "</td>";
                     if (tt[i].tc_handle !=0) {
-                        html += "<td>✅</td>";
+                        html += "<td><i class='fa fa-check-circle'></i> (" + tt[i].plan[0] + "/" + tt[i].plan[1] + ")</td>";
                     } else {
                         html += "<td></td>";
                     }
@@ -242,18 +240,16 @@
         function updateWorst10() {
             $.get("/api/worst_10_rtt", (tt) => {
                 let html = "<table class='table'>";
-                html += "<thead><th>IP Address</th><th>DL ⬇️</th><th>UL ⬆️</th><th>PPS ⬇️</th><th>PPS ⬆️</th><th>RTT (ms)</th><th>Shaped</th></thead>";
+                html += "<thead><th>IP Address</th><th>DL ⬇️</th><th>UL ⬆️</th><th>RTT (ms)</th><th>Shaped</th></thead>";
                 for (let i=0; i<tt.length; i++) {
                     let color = color_ramp(tt[i].median_tcp_rtt);
                     html += "<tr style='background-color: " + color + "'>";
                     html += "<td>" + tt[i].ip_address + "</td>";
                     html += "<td>" + scaleNumber(tt[i].bits_per_second[0]) + "</td>";
                     html += "<td>" + scaleNumber(tt[i].bits_per_second[1]) + "</td>";
-                    html += "<td>" + scaleNumber(tt[i].packets_per_second[0]) + "</td>";
-                    html += "<td>" + scaleNumber(tt[i].packets_per_second[1]) + "</td>";
                     html += "<td>" + tt[i].median_tcp_rtt.toFixed(2) + "</td>";
                     if (tt[i].tc_handle !=0) {
-                        html += "<td>✅</td>";
+                        html += "<td><i class='fa fa-check-circle'></i> (" + tt[i].plan[0] + "/" + tt[i].plan[1] + ")</td>";
                     } else {
                         html += "<td></td>";
                     }
