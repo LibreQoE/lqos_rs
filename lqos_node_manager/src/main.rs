@@ -34,6 +34,7 @@ fn rocket() -> _ {
             shaped_devices::shaped_devices_count,
             shaped_devices::shaped_devices_range,
             shaped_devices::reload_required,
+            shaped_devices::shaped_devices_search,
 
             // Supporting files
             static_pages::bootsrap_css,

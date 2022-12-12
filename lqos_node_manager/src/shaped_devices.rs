@@ -26,6 +26,22 @@ pub fn shaped_devices_range(start: usize, end: usize) -> NoCache<Json<Vec<Shaped
     NoCache::new(Json(result))
 }
 
+#[get("/api/shaped_devices_search/<term>")]
+pub fn shaped_devices_search(term: String) -> NoCache<Json<Vec<ShapedDevice>>> {
+    let term = term.trim().to_lowercase();
+    let reader = SHAPED_DEVICES.read();
+    let result: Vec<ShapedDevice> = reader
+        .devices
+        .iter()
+        .filter(|s| 
+            s.circuit_name.trim().to_lowercase().contains(&term) ||
+            s.device_name.trim().to_lowercase().contains(&term)
+        )
+        .cloned()
+        .collect();
+    NoCache::new(Json(result))
+}
+
 #[get("/api/reload_required")]
 pub fn reload_required() -> NoCache<Json<bool>> {
     NoCache::new(Json(*RELOAD_REQUIRED.read()))

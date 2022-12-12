@@ -54,6 +54,16 @@
                 <div class="card bg-light">
                     <div class="card-body">
                         <h5 class="card-title"><i class="fa fa-users"></i> Shaped Devices</h5>
+
+                        <div class="row">
+                            <div class="col">
+                                <input id="search" class="form-control" placeholder="Search">
+                            </div>
+                            <div class="col">
+                                <a href="#" class="btn btn-primary" id="btnSearch"><i class='fa fa-search'></i></a>
+                            </div>
+                        </div>
+
                         <table class="table table-striped">
                             <thead>
                                 <th>Circuit</th>
@@ -107,6 +117,19 @@
             });
         }
 
+        function doSearch() {
+            let term = $("#search").val();
+            if (term == "") {
+                paginator(0);
+            } else {
+                // /api/shaped_devices_search/<term>
+                let safe_term = encodeURIComponent(term);
+                $.get("/api/shaped_devices_search/" + safe_term, (devices) => {
+                    fillDeviceTable(devices);
+                })
+            }
+        }
+
         function start() {
             colorReloadButton();
             updateHostCounts();
@@ -121,6 +144,12 @@
             });
             $.get("/api/shaped_devices_range/0/25", (devices) => {
                 fillDeviceTable(devices);
+            });
+            $("#btnSearch").on('click', () => {
+                doSearch();
+            });
+            $("#search").on('keyup', (k) => {
+                if (k.originalEvent.keyCode == 13) doSearch();
             });
         }
 
