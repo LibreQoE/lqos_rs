@@ -188,7 +188,7 @@ pub fn host_counts() -> BusResponse {
 }
 
 pub fn all_unknown_ips() -> BusResponse {
-    let mut full_list: Vec<(XdpIpAddress, (u64, u64), (u64, u64), f32, TcHandle)> = {
+    let mut full_list: Vec<(XdpIpAddress, (u64, u64), (u64, u64), f32, TcHandle, u64)> = {
         let tp = THROUGHPUT_TRACKER.read();
         tp.raw_data
             .iter()
@@ -197,19 +197,20 @@ pub fn all_unknown_ips() -> BusResponse {
             .map(|(ip, te)| {
                 (
                     *ip,
-                    te.bytes_per_second,
-                    te.packets_per_second,
+                    te.bytes,
+                    te.packets,
                     te.median_latency(),
                     te.tc_handle,
+                    te.most_recent_cycle
                 )
             })
             .collect()
     };
-    full_list.sort_by(|a, b| b.3.partial_cmp(&a.3).unwrap());
+    full_list.sort_by(|a, b| a.5.partial_cmp(&b.5).unwrap());
     let result = full_list
         .iter()
         .map(
-            |(ip, (bytes_dn, bytes_up), (packets_dn, packets_up), median_rtt, tc_handle)| IpStats {
+            |(ip, (bytes_dn, bytes_up), (packets_dn, packets_up), median_rtt, tc_handle, _last_seen)| IpStats {
                 ip_address: ip.as_ip().to_string(),
                 bits_per_second: (bytes_dn * 8, bytes_up * 8),
                 packets_per_second: (*packets_dn, *packets_up),
