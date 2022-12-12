@@ -122,22 +122,25 @@ where
     /// take a very long time. Only use this for cleaning up
     /// sparsely allocated map data.
     pub(crate) fn clear(&mut self) -> Result<()> {
-        let mut key = K::default();
-        let mut prev_key: *mut K = null_mut();
-        unsafe {
-            let key_ptr: *mut K = &mut key;
-            while bpf_map_get_next_key(self.fd, prev_key as *mut c_void, key_ptr as *mut c_void)
-                == 0
-            {
-                bpf_map_delete_elem(self.fd, key_ptr as *mut c_void);
-                prev_key = key_ptr;
+        loop {
+            let mut key = K::default();
+            let mut prev_key: *mut K = null_mut();
+            unsafe {
+                let key_ptr: *mut K = &mut key;
+                while bpf_map_get_next_key(self.fd, prev_key as *mut c_void, key_ptr as *mut c_void)== 0
+                {
+                    bpf_map_delete_elem(self.fd, key_ptr as *mut c_void);
+                    prev_key = key_ptr;
+                }
             }
-            // Doing this twice because I've even emulated a bug in the parent. Ugh.
-            while bpf_map_get_next_key(self.fd, prev_key as *mut c_void, key_ptr as *mut c_void)
-                == 0
-            {
-                bpf_map_delete_elem(self.fd, key_ptr as *mut c_void);
-                prev_key = key_ptr;
+
+            key = K::default();
+            prev_key = null_mut();
+            unsafe {
+                let key_ptr: *mut K = &mut key;
+                if bpf_map_get_next_key(self.fd, prev_key as *mut c_void, key_ptr as *mut c_void) != 0 {
+                    break;
+                }
             }
         }
         Ok(())
