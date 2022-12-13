@@ -9,6 +9,7 @@ pub struct ThroughputTracker {
     pub(crate) raw_data: HashMap<XdpIpAddress, ThroughputEntry>,
     pub(crate) bytes_per_second: (u64, u64),
     pub(crate) packets_per_second: (u64, u64),
+    pub(crate) shaped_bytes_per_second: (u64, u64),
 }
 
 impl ThroughputTracker {
@@ -21,6 +22,7 @@ impl ThroughputTracker {
             raw_data: HashMap::with_capacity(lqos_sys::max_tracked_ips()),
             bytes_per_second: (0, 0),
             packets_per_second: (0, 0),
+            shaped_bytes_per_second: (0, 0),
         }
     }
 
@@ -100,6 +102,7 @@ impl ThroughputTracker {
         // Update totals
         self.bytes_per_second = (0, 0);
         self.packets_per_second = (0, 0);
+        self.shaped_bytes_per_second = (0, 0);
         self.raw_data
             .iter()
             .map(|(_k, v)| {
@@ -108,13 +111,18 @@ impl ThroughputTracker {
                     v.bytes.1 - v.prev_bytes.1,
                     v.packets.0 - v.prev_packets.0,
                     v.packets.1 - v.prev_packets.1,
+                    v.tc_handle.as_u32() > 0
                 )
             })
-            .for_each(|(bytes_down, bytes_up, packets_down, packets_up)| {
+            .for_each(|(bytes_down, bytes_up, packets_down, packets_up, shaped)| {
                 self.bytes_per_second.0 += bytes_down;
                 self.bytes_per_second.1 += bytes_up;
                 self.packets_per_second.0 += packets_down;
                 self.packets_per_second.1 += packets_up;
+                if shaped {
+                    self.shaped_bytes_per_second.0 += bytes_down;
+                    self.shaped_bytes_per_second.1 += bytes_up;
+                }
             });
 
         // Onto the next cycle
@@ -124,6 +132,10 @@ impl ThroughputTracker {
 
     pub(crate) fn bits_per_second(&self) -> (u64, u64) {
         (self.bytes_per_second.0 * 8, self.bytes_per_second.1 * 8)
+    }
+
+    pub(crate) fn shaped_bits_per_second(&self) -> (u64, u64) {
+        (self.shaped_bytes_per_second.0 * 8, self.shaped_bytes_per_second.1 * 8)
     }
 
     pub(crate) fn packets_per_second(&self) -> (u64, u64) {

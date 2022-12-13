@@ -18,6 +18,7 @@ lazy_static! {
 pub struct ThroughputPerSecond {
     pub bits_per_second: (u64, u64),
     pub packets_per_second: (u64, u64),
+    pub shaped_bits_per_second: (u64, u64),
 }
 
 impl Default for ThroughputPerSecond {
@@ -25,6 +26,7 @@ impl Default for ThroughputPerSecond {
         Self {
             bits_per_second: (0,0),
             packets_per_second: (0,0),
+            shaped_bits_per_second: (0, 0),
         }
     }
 }

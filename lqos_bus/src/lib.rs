@@ -50,6 +50,7 @@ pub enum BusResponse {
     CurrentThroughput {
         bits_per_second: (u64, u64),
         packets_per_second: (u64, u64),
+        shaped_bits_per_second: (u64, u64),
     },
     TopDownloaders(Vec<IpStats>),
     WorstRtt(Vec<IpStats>),

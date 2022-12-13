@@ -43,13 +43,14 @@ pub async fn spawn_throughput_monitor() {
 }
 
 pub fn current_throughput() -> BusResponse {
-    let (bits_per_second, packets_per_second) = {
+    let (bits_per_second, packets_per_second, shaped_bits_per_second) = {
         let tp = THROUGHPUT_TRACKER.read();
-        (tp.bits_per_second(), tp.packets_per_second())
+        (tp.bits_per_second(), tp.packets_per_second(), tp.shaped_bits_per_second())
     };
     BusResponse::CurrentThroughput {
         bits_per_second,
         packets_per_second,
+        shaped_bits_per_second,
     }
 }
 

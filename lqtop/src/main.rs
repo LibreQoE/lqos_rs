@@ -46,6 +46,7 @@ async fn get_data() -> Result<DataResult> {
             BusResponse::CurrentThroughput {
                 bits_per_second,
                 packets_per_second,
+                shaped_bits_per_second: _,
             } => {
                 let tuple = (
                     bits_per_second.0,

@@ -91,6 +91,7 @@ async fn get_data_from_server() -> Result<()> {
             BusResponse::CurrentThroughput {
                 bits_per_second,
                 packets_per_second,
+                shaped_bits_per_second
             } => {
                 {
                     let mut lock = CURRENT_THROUGHPUT.write();
@@ -102,6 +103,7 @@ async fn get_data_from_server() -> Result<()> {
                     lock.store(ThroughputPerSecond {
                         packets_per_second: *packets_per_second,
                         bits_per_second: *bits_per_second,
+                        shaped_bits_per_second: *shaped_bits_per_second,
                     });
                 }
             }
