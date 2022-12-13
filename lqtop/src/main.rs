@@ -22,7 +22,7 @@ struct DataResult {
     top: Vec<IpStats>,
 }
 
-async fn get_data() -> Result<DataResult> {
+async fn get_data(n_rows: u16) -> Result<DataResult> {
     let mut result = DataResult {
         totals: (0, 0, 0, 0),
         top: Vec::new(),
@@ -32,7 +32,7 @@ async fn get_data() -> Result<DataResult> {
         auth_cookie: 1234,
         requests: vec![
             BusRequest::GetCurrentThroughput,
-            BusRequest::GetTopNDownloaders(10),
+            BusRequest::GetTopNDownloaders(n_rows as u32),
         ],
     };
     let msg = encode_request(&test)?;
@@ -189,9 +189,10 @@ pub async fn main() -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
+    let mut n_rows = 10;
 
     loop {
-        if let Ok(result) = get_data().await {
+        if let Ok(result) = get_data(n_rows).await {
             let (bits_down, bits_up, packets_down, packets_up) = result.totals;
             packets = (packets_down, packets_up);
             bits = (bits_down, bits_up);
@@ -213,7 +214,7 @@ pub async fn main() -> Result<()> {
                 )
                 .split(f.size());
             f.render_widget(draw_menu(), chunks[0]);
-
+            n_rows = chunks[1].height;
             f.render_widget(draw_top_pane(&top, packets, bits), chunks[1]);
             //f.render_widget(bandwidth_chart(datasets.clone(), packets, bits, min, max), chunks[1]);
         })?;
