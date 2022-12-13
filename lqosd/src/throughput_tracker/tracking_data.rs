@@ -36,7 +36,7 @@ impl ThroughputTracker {
                 v.prev_packets = v.packets;
             }
             // Roll out stale RTT data
-            if self.cycle > 30 && v.last_fresh_rtt_data_cycle < self.cycle - 30 {
+            if self.cycle > RETIRE_AFTER_SECONDS && v.last_fresh_rtt_data_cycle < self.cycle - RETIRE_AFTER_SECONDS {
                 v.recent_rtt_data = [0; 60];
             }
         });
