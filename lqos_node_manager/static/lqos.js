@@ -53,8 +53,13 @@ function updateHostCounts() {
 }
 
 function colorReloadButton() {
+    $("body").append(reloadModal);
     $("#btnReload").on('click', () => {
-        alert("I promise to write this soon");
+        $.get("/api/reload_libreqos", (result) => {
+            const myModal = new bootstrap.Modal(document.getElementById('reloadModal'), {focus: true});
+            $("#reloadLibreResult").text(result);
+            myModal.show();    
+        });
     });
     $.get("/api/reload_required", (req) => {
         if (req) {
@@ -78,3 +83,22 @@ function scaleNumber(n) {
     }
     return n;
 }
+
+const reloadModal = `
+<div class='modal fade' id='reloadModal' tabindex='-1' aria-labelledby='reloadModalLabel' aria-hidden='true'>
+    <div class='modal-dialog modal-fullscreen'>
+      <div class='modal-content'>
+        <div class='modal-header'>
+          <h1 class='modal-title fs-5' id='reloadModalLabel'>LibreQoS Reload Result</h1>
+          <button type='button' class='btn-close' data-bs-dismiss='modal' aria-label='Close'></button>
+        </div>
+        <div class='modal-body'>
+          <pre id='reloadLibreResult' style='overflow: vertical; height: 100%; width: 100%;'>
+          </pre>
+        </div>
+        <div class='modal-footer'>
+          <button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>Close</button>
+        </div>
+      </div>
+    </div>
+  </div>`;

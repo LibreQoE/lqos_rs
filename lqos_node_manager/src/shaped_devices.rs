@@ -46,3 +46,11 @@ pub fn shaped_devices_search(term: String) -> NoCache<Json<Vec<ShapedDevice>>> {
 pub fn reload_required() -> NoCache<Json<bool>> {
     NoCache::new(Json(*RELOAD_REQUIRED.read()))
 }
+
+#[get("/api/reload_libreqos")]
+pub fn reload_libreqos() -> Json<String> {
+    let result = lqos_config::load_libreqos().unwrap();
+    println!("Reload result: {}", result);
+    *RELOAD_REQUIRED.write() = false;
+    Json(result)
+}
