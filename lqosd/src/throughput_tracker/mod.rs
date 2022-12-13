@@ -4,7 +4,7 @@ use lazy_static::*;
 use lqos_bus::{BusResponse, IpStats, XdpPpingResult, TcHandle};
 use lqos_sys::{XdpIpAddress, get_throughput_map};
 use parking_lot::RwLock;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::{task, time};
 use crate::throughput_tracker::tracking_data::ThroughputTracker;
 
@@ -20,6 +20,7 @@ pub async fn spawn_throughput_monitor() {
         let mut interval = time::interval(Duration::from_secs(1));
 
         loop {
+            let now = Instant::now();
             let _ = task::spawn_blocking(move || {
                 let rtt = lqos_sys::get_tcp_round_trip_times();
                 if let Ok(value_dump) = get_throughput_map() {
@@ -28,7 +29,15 @@ pub async fn spawn_throughput_monitor() {
                 }
             })
             .await;
-            interval.tick().await;
+            let elapsed = now.elapsed();
+            //println!("Tick consumed {:.2} seconds.", elapsed.as_secs_f32());
+            if elapsed.as_secs_f32() < 1.0 {
+                let duration = Duration::from_secs(1) - elapsed;
+                //println!("Sleeping for {:.2} seconds", duration.as_secs_f32());
+                tokio::time::sleep(duration).await;
+            } else {
+                interval.tick().await;
+            }
         }
     });
 }
