@@ -1,5 +1,8 @@
+use lqos_bus::{BusResponse, BUS_BIND_ADDRESS, BusSession, BusRequest, encode_request, decode_response};
 use lqos_config::ShapedDevice;
 use rocket::serde::json::Json;
+use rocket::tokio::io::{AsyncWriteExt, AsyncReadExt};
+use rocket::tokio::net::TcpStream;
 use crate::cache_control::NoCache;
 use crate::tracker::SHAPED_DEVICES;
 use lazy_static::*;
@@ -48,9 +51,28 @@ pub fn reload_required() -> NoCache<Json<bool>> {
 }
 
 #[get("/api/reload_libreqos")]
-pub fn reload_libreqos() -> Json<String> {
-    let result = lqos_config::load_libreqos().unwrap();
-    println!("Reload result: {}", result);
+pub async fn reload_libreqos() -> NoCache<Json<String>> {
+    // Send request to lqosd
+    let mut stream = TcpStream::connect(BUS_BIND_ADDRESS).await.unwrap();
+    let test = BusSession {
+        auth_cookie: 1234,
+        requests: vec![
+            BusRequest::ReloadLibreQoS,
+        ],
+    };
+    let msg = encode_request(&test).unwrap();
+    stream.write(&msg).await.unwrap();
+
+    // Receive reply
+    let mut buf = Vec::new();
+    let _ = stream.read_to_end(&mut buf).await.unwrap();
+    let reply = decode_response(&buf).unwrap();
+
+    let result = match &reply.responses[0] {
+        BusResponse::ReloadLibreQoS(msg) => msg.clone(),
+        _ => "Unable to reload LibreQoS".to_string(),
+    };
+
     *RELOAD_REQUIRED.write() = false;
-    Json(result)
+    NoCache::new(Json(result))
 }

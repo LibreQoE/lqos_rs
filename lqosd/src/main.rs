@@ -12,6 +12,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
 };
+mod program_control;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -79,6 +80,7 @@ async fn main() -> Result<()> {
                             BusRequest::RttHistogram => throughput_tracker::rtt_histogram(),
                             BusRequest::HostCounts => throughput_tracker::host_counts(),
                             BusRequest::AllUnknownIps => throughput_tracker::all_unknown_ips(),
+                            BusRequest::ReloadLibreQoS => program_control::reload_libre_qos(),
                         });
                     }
                     //println!("{:?}", response);
