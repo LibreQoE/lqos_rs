@@ -3,7 +3,7 @@ use anyhow::{Result, Error};
 use serde::{Serialize, Deserialize};
 
 /// Provides consistent handling of TC handle types.
-#[derive(Copy, Clone, Serialize, Deserialize, Debug)]
+#[derive(Copy, Clone, Serialize, Deserialize, Debug, Default)]
 pub struct TcHandle(u32);
 
 #[allow(non_camel_case_types)]

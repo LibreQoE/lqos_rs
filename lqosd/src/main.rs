@@ -1,5 +1,7 @@
 mod ip_mapping;
 mod throughput_tracker;
+mod program_control;
+mod queue_tracker;
 use crate::ip_mapping::{clear_ip_flows, del_ip_flow, list_mapped_ips, map_ip_to_flow};
 use anyhow::Result;
 use lqos_bus::{
@@ -12,7 +14,6 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
 };
-mod program_control;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -28,6 +29,7 @@ async fn main() -> Result<()> {
         LibreQoSKernels::new(&config.internet_interface, &config.isp_interface)?
     };
     throughput_tracker::spawn_throughput_monitor().await;
+    queue_tracker::spawn_queue_monitor().await;
 
     let mut signals = Signals::new(&[SIGINT])?;
 
