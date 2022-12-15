@@ -2,6 +2,7 @@ mod ip_mapping;
 mod throughput_tracker;
 mod program_control;
 mod queue_tracker;
+mod libreqos_tracker;
 use crate::ip_mapping::{clear_ip_flows, del_ip_flow, list_mapped_ips, map_ip_to_flow};
 use anyhow::Result;
 use lqos_bus::{
@@ -12,7 +13,7 @@ use lqos_sys::LibreQoSKernels;
 use signal_hook::{consts::SIGINT, iterator::Signals};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
-    net::{TcpListener, TcpStream},
+    net::{TcpListener, TcpStream}, join,
 };
 
 #[tokio::main]
@@ -28,8 +29,14 @@ async fn main() -> Result<()> {
     } else {
         LibreQoSKernels::new(&config.internet_interface, &config.isp_interface)?
     };
-    throughput_tracker::spawn_throughput_monitor().await;
-    queue_tracker::spawn_queue_monitor().await;
+
+    // Spawn tracking sub-systems
+    join!(
+        throughput_tracker::spawn_throughput_monitor(),
+        queue_tracker::spawn_queue_monitor(),
+        libreqos_tracker::spawn_shaped_devices_monitor(),
+        libreqos_tracker::spawn_queue_structure_monitor(),
+    );
 
     let mut signals = Signals::new(&[SIGINT])?;
 
@@ -91,22 +98,6 @@ async fn main() -> Result<()> {
             }
         });
     }
-
-    /*
-    let mut throughput = throughput_tracker::ThroughputTracker::new();
-
-    add_ip_to_tc("100.64.1.2/32", (1, 12), 2)?;
-
-    loop {
-        std::thread::sleep(Duration::from_secs(1));
-        let _ = throughput.tick(); // Ignoring errors
-        let bps = throughput.bits_per_second();
-        let packets = throughput.packets_per_second();
-        if throughput.cycle > 1 {
-            println!("🠗 {} bits/second ({} packets), {} 🠕 bits/second ({} packets)", bps.0, packets.0, bps.1, packets.1);
-        }
-        throughput.dump();
-    }*/
 }
 
 async fn reply(response: &[u8], socket: &mut TcpStream) -> Result<()> {

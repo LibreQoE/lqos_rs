@@ -133,8 +133,8 @@ use serde_json::Value;
 
 #[derive(Default, Clone, Debug)]
 pub(crate) struct TcCake {
-    handle: TcHandle,
-    parent: TcHandle,
+    pub(crate) handle: TcHandle,
+    pub(crate) parent: TcHandle,
     options: TcCakeOptions,
     bytes: u64,
     packets: u64,

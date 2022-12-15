@@ -22,7 +22,7 @@ extern "C" {
 
 impl TcHandle {
     #[inline(always)]
-    fn get_major_minor(&self) -> (u16, u16) {
+    pub fn get_major_minor(&self) -> (u16, u16) {
         // According to xdp_pping.c handles are minor:major u16s inside
         // a u32.
         (
