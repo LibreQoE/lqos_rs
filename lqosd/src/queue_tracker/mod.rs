@@ -38,6 +38,9 @@ fn track_queues() {
                             let (cmaj,cmin) = circuit.class_id.get_major_minor();
                             maj==cmaj && min == cmin
                         }
+                        QueueType::FqCodel(fq) => {
+                            fq.parent.as_u32() == circuit.class_id.as_u32()
+                        }
                         _ => false,
                     }
                 });
@@ -47,6 +50,9 @@ fn track_queues() {
                             let (maj,min) = cake.parent.get_major_minor();
                             let (cmaj,cmin) = circuit.up_class_id.get_major_minor();
                             maj==cmaj && min == cmin
+                        }
+                        QueueType::FqCodel(fq) => {
+                            fq.parent.as_u32() == circuit.up_class_id.as_u32()
                         }
                         _ => false,
                     }
@@ -63,6 +69,9 @@ fn track_queues() {
                             let (cmaj,cmin) = circuit.class_id.get_major_minor();
                             maj==cmaj && min == cmin
                         }
+                        QueueType::FqCodel(fq) => {
+                            fq.parent.as_u32() == circuit.class_id.as_u32()
+                        }
                         _ => false,
                     }
                 });
@@ -72,6 +81,9 @@ fn track_queues() {
                             let (maj,min) = cake.parent.get_major_minor();
                             let (cmaj,cmin) = circuit.class_id.get_major_minor();
                             maj==cmaj && min == cmin
+                        }
+                        QueueType::FqCodel(fq) => {
+                            fq.parent.as_u32() == circuit.class_id.as_u32()
                         }
                         _ => false,
                     }
