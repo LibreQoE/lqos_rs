@@ -3,10 +3,11 @@
 */
 
 use lqos_bus::TcHandle;
+use serde::Serialize;
 use serde_json::Value;
 use anyhow::Result;
 
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, Serialize)]
 pub(crate) struct TcMultiQueue {
     handle: TcHandle,
     root: bool,

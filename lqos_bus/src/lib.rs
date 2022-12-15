@@ -36,6 +36,7 @@ pub enum BusRequest {
     HostCounts,
     AllUnknownIps,
     ReloadLibreQoS,
+    GetRawQueueData(String), // The string is the circuit ID
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -61,6 +62,7 @@ pub enum BusResponse {
     HostCounts((u32, u32)),
     AllUnknownIps(Vec<IpStats>),
     ReloadLibreQoS(String),
+    RawQueueData(String),
 }
 
 pub fn encode_request(request: &BusSession) -> Result<Vec<u8>> {

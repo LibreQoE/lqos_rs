@@ -129,9 +129,10 @@
 
 use anyhow::{Result, Error};
 use lqos_bus::TcHandle;
+use serde::Serialize;
 use serde_json::Value;
 
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, Serialize)]
 pub(crate) struct TcCake {
     pub(crate) handle: TcHandle,
     pub(crate) parent: TcHandle,
@@ -154,7 +155,7 @@ pub(crate) struct TcCake {
     drops: u64,
  }
 
- #[derive(Default, Clone, Debug)]
+ #[derive(Default, Clone, Debug, Serialize)]
   struct TcCakeOptions {
     bandwidth: String,
     diffserv: String,
@@ -170,7 +171,7 @@ pub(crate) struct TcCake {
     fwmark: String,
  }
 
- #[derive(Default, Clone, Debug)]
+ #[derive(Default, Clone, Debug, Serialize)]
  struct TcCakeTin {
     threshold_rate: u64,
     sent_bytes: u64,

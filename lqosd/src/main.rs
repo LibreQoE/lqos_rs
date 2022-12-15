@@ -90,6 +90,7 @@ async fn main() -> Result<()> {
                             BusRequest::HostCounts => throughput_tracker::host_counts(),
                             BusRequest::AllUnknownIps => throughput_tracker::all_unknown_ips(),
                             BusRequest::ReloadLibreQoS => program_control::reload_libre_qos(),
+                            BusRequest::GetRawQueueData(circuit_id) => queue_tracker::get_raw_circuit_data(&circuit_id),
                         });
                     }
                     //println!("{:?}", response);

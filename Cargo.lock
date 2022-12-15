@@ -1233,6 +1233,7 @@ dependencies = [
  "lqos_sys",
  "notify",
  "parking_lot 0.12.1",
+ "serde",
  "serde_json",
  "signal-hook 0.3.14",
  "tokio",

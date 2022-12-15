@@ -3,10 +3,11 @@ mod tc_htb;
 mod tc_fq_codel;
 mod tc_cake;
 use anyhow::{Result, Error};
+use serde::Serialize;
 use serde_json::Value;
 use std::process::Command;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub(crate) enum QueueType {
     Mq(tc_mq::TcMultiQueue),
     Htb(tc_htb::TcHtb),

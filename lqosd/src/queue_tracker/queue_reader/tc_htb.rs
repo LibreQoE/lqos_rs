@@ -5,9 +5,10 @@
 
 use anyhow::{Result, Error};
 use lqos_bus::TcHandle;
+use serde::Serialize;
 use serde_json::Value;
 
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, Serialize)]
 pub(crate) struct TcHtb {
     handle: TcHandle,
     parent: TcHandle,
@@ -21,7 +22,7 @@ pub(crate) struct TcHtb {
     qlen: u64,
 }
 
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, Serialize)]
 struct TcHtbOptions {
     r2q: u64,
     default: TcHandle,

@@ -1,4 +1,5 @@
 use std::{time::{Duration, Instant}, collections::HashMap};
+use lqos_bus::BusResponse;
 use lqos_config::LibreQoSConfig;
 use tokio::{task, time};
 use crate::libreqos_tracker::QUEUE_STRUCTURE;
@@ -10,7 +11,6 @@ use parking_lot::RwLock;
 lazy_static! {
     pub(crate) static ref CIRCUIT_TO_QUEUE : RwLock<HashMap<String, (QueueType, QueueType)>> = RwLock::new(HashMap::new());
 }
-
 
 fn track_queues() {
     let config = LibreQoSConfig::load().unwrap();
@@ -107,4 +107,17 @@ pub async fn spawn_queue_monitor() {
             }
         }
     });
+}
+
+pub fn get_raw_circuit_data(circuit_id: &str) -> BusResponse {
+    let reader = CIRCUIT_TO_QUEUE.read();
+    if let Some(circuit) = reader.get(circuit_id) {
+        if let Ok(json) = serde_json::to_string(circuit) {
+            BusResponse::RawQueueData(json)
+        } else {
+            BusResponse::RawQueueData(String::new())
+        }
+    } else {
+        BusResponse::RawQueueData(String::new())
+    }
 }

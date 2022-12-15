@@ -7,9 +7,10 @@
 
 use anyhow::{Result, Error};
 use lqos_bus::TcHandle;
+use serde::Serialize;
 use serde_json::Value;
 
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, Serialize)]
 pub(crate) struct TcFqCodel {
     handle: TcHandle,
     parent: TcHandle,
@@ -29,7 +30,7 @@ pub(crate) struct TcFqCodel {
     old_flows_len: u64,
 }
 
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, Serialize)]
 struct TcFqCodelOptions {
     limit: u64,
     flows: u64,

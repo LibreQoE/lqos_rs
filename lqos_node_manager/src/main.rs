@@ -6,6 +6,7 @@ mod shaped_devices;
 mod unknown_devices;
 mod cache_control;
 use rocket_async_compression::Compression;
+mod queue_info;
 
 #[launch]
 fn rocket() -> _ {
@@ -43,6 +44,7 @@ fn rocket() -> _ {
             unknown_devices::all_unknown_devices,
             unknown_devices::unknown_devices_count,
             unknown_devices::unknown_devices_range,
+            queue_info::raw_queue_by_circuit,
 
             // Supporting files
             static_pages::bootsrap_css,
