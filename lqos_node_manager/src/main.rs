@@ -45,6 +45,7 @@ fn rocket() -> _ {
             unknown_devices::unknown_devices_count,
             unknown_devices::unknown_devices_range,
             queue_info::raw_queue_by_circuit,
+            queue_info::run_btest,
 
             // Supporting files
             static_pages::bootsrap_css,

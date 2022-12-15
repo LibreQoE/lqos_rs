@@ -3,6 +3,10 @@ name = "lqos_node_manager"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["equinix_tests"]
+equinix_tests = []
+
 [dependencies]
 rocket = { version = "0.5.0-rc.2", features = [ "json", "msgpack", "uuid" ] }
 rocket_async_compression = "0.2.0"

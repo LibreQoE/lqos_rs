@@ -37,6 +37,8 @@ pub enum BusRequest {
     AllUnknownIps,
     ReloadLibreQoS,
     GetRawQueueData(String), // The string is the circuit ID
+    #[cfg(feature = "equinix_tests")]
+    RequestLqosEquinixTest, // TODO: Feature flag this so it doesn't go into production
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

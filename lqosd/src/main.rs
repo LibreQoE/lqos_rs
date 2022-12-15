@@ -3,6 +3,8 @@ mod throughput_tracker;
 mod program_control;
 mod queue_tracker;
 mod libreqos_tracker;
+#[cfg(feature = "equinix_tests")]
+mod lqos_daht_test;
 use crate::ip_mapping::{clear_ip_flows, del_ip_flow, list_mapped_ips, map_ip_to_flow};
 use anyhow::Result;
 use lqos_bus::{
@@ -91,6 +93,8 @@ async fn main() -> Result<()> {
                             BusRequest::AllUnknownIps => throughput_tracker::all_unknown_ips(),
                             BusRequest::ReloadLibreQoS => program_control::reload_libre_qos(),
                             BusRequest::GetRawQueueData(circuit_id) => queue_tracker::get_raw_circuit_data(&circuit_id),
+                            #[cfg(feature = "equinix_tests")]
+                            BusRequest::RequestLqosEquinixTest => lqos_daht_test::lqos_daht_test().await,
                         });
                     }
                     //println!("{:?}", response);

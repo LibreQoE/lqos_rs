@@ -3,6 +3,10 @@ name = "lqosd"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["equinix_tests"]
+equinix_tests = []
+
 [dependencies]
 anyhow = "1"
 lqos_config = { path = "../lqos_config" }
