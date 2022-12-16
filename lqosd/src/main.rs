@@ -5,6 +5,7 @@ mod queue_tracker;
 mod libreqos_tracker;
 #[cfg(feature = "equinix_tests")]
 mod lqos_daht_test;
+mod offloads;
 use crate::ip_mapping::{clear_ip_flows, del_ip_flow, list_mapped_ips, map_ip_to_flow};
 use anyhow::Result;
 use lqos_bus::{
@@ -22,6 +23,14 @@ use tokio::{
 async fn main() -> Result<()> {
     println!("LibreQoS Daemon Starting");
     let config = LibreQoSConfig::load()?;
+
+    // Disable offloading
+    offloads::stop_irq_balance().await;
+    offloads::netdev_budget(20, 1).await;
+    offloads::ethtool_tweaks(&config.internet_interface).await;
+    offloads::ethtool_tweaks(&config.isp_interface).await;
+
+    // Start the XDP/TC kernels
     let kernels = if config.on_a_stick_mode {
         // Hack: Turn off RXVLAN
         std::process::Command::new("ethtool")
