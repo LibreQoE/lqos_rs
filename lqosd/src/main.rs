@@ -36,7 +36,7 @@ async fn main() -> Result<()> {
     join!(
         throughput_tracker::spawn_throughput_monitor(),
         queue_tracker::spawn_queue_monitor(),
-        libreqos_tracker::spawn_shaped_devices_monitor(),
+        //libreqos_tracker::spawn_shaped_devices_monitor(),
         libreqos_tracker::spawn_queue_structure_monitor(),
     );
 
