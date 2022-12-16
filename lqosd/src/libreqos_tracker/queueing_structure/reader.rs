@@ -139,7 +139,7 @@ impl QueueNode {
                             }
                         }
                     }
-                    _ => println!("I don't know how to parse key: [{key}]"),
+                    _ => log::error!("I don't know how to parse key: [{key}]"),
                 }
             }
         } else {

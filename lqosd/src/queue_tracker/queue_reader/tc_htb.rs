@@ -47,7 +47,7 @@ impl TcHtb {
                 "options" => result.options = TcHtbOptions::from_json(value)?,
                 "kind" => {},
                 _ => {
-                    println!("Unknown entry in Tc-HTB: {key}");
+                    log::error!("Unknown entry in Tc-HTB: {key}");
                 }
             }
         }
@@ -67,7 +67,7 @@ impl TcHtbOptions {
                         "direct_packets_stat" => result.direct_packets_stat = value.as_u64().unwrap(),
                         "direct_qlen" => result.direct_qlen = value.as_u64().unwrap(),
                         _ => {
-                            println!("Unknown entry in Tc-HTB: {key}");
+                            log::error!("Unknown entry in Tc-HTB: {key}");
                         }
                     }
                 }

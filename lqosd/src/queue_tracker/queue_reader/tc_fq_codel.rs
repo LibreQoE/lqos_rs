@@ -65,7 +65,7 @@ impl TcFqCodel {
                 "options" => result.options = TcFqCodelOptions::from_json(value)?,
                 "kind" => {},
                 _ => {
-                    println!("Unknown entry in Tc-codel: {key}");
+                    log::error!("Unknown entry in Tc-codel: {key}");
                 }
             }
         }
@@ -89,7 +89,7 @@ impl TcFqCodelOptions {
                         "ecn" => result.ecn = value.as_bool().unwrap(),
                         "drop_batch" => result.drop_batch = value.as_u64().unwrap(),
                         _ => {
-                            println!("Unknown entry in Tc-codel-options: {key}");
+                            log::error!("Unknown entry in Tc-codel-options: {key}");
                         }
                     }
                 }

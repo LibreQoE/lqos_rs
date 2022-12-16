@@ -146,7 +146,7 @@ impl ThroughputTracker {
     pub(crate) fn dump(&self) {
         for (k, v) in self.raw_data.iter() {
             let ip = k.as_ip();
-            println!("{:<34}{:?}", ip, v.tc_handle);
+            log::info!("{:<34}{:?}", ip, v.tc_handle);
         }
     }
 }

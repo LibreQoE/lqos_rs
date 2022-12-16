@@ -230,7 +230,7 @@ pub(crate) struct TcCake {
                 }
                 "kind" => {},
                _ => {
-                    println!("Unknown entry in Tc-cake: {key}");
+                    log::error!("Unknown entry in Tc-cake: {key}");
                 }
             }
         }
@@ -258,7 +258,7 @@ impl TcCakeOptions {
                         "overhead" => result.overhead = value.as_u64().unwrap(),
                         "fwmark" => result.fwmark = value.as_str().unwrap().to_string(),
                         _ => {
-                            println!("Unknown entry in Tc-cake-options: {key}");
+                            log::error!("Unknown entry in Tc-cake-options: {key}");
                         }
                     }
                 }
@@ -297,7 +297,7 @@ impl TcCakeTin {
                         "max_pkt_len" => result.max_pkt_len = value.as_u64().unwrap(),
                         "flow_quantum" => result.flow_quantum = value.as_u64().unwrap(),
                         _ => {
-                            println!("Unknown entry in Tc-cake-tin: {key}");
+                            log::error!("Unknown entry in Tc-cake-tin: {key}");
                         }
                     }
                 }

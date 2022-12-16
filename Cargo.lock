@@ -1227,7 +1227,9 @@ name = "lqosd"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "env_logger",
  "lazy_static",
+ "log",
  "lqos_bus",
  "lqos_config",
  "lqos_sys",

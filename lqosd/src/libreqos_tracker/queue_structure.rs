@@ -31,7 +31,7 @@ fn watch_for_shaped_devices_changing() -> Result<()> {
     loop {
         let _ = rx.recv();
         let new_file = read_queueing_structure();
-        println!("queuingStructure.csv changed");
+        log::info!("queuingStructure.csv changed");
         *QUEUE_STRUCTURE.write() = new_file;
     }
 }

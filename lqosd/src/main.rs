@@ -18,10 +18,12 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream}, join,
 };
+use log::{info, warn};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    println!("LibreQoS Daemon Starting");
+    env_logger::init(); // Configure log level with RUST_LOG environment variable
+    info!("LibreQoS Daemon Starting");
     let config = LibreQoSConfig::load()?;
 
     // Disable offloading
@@ -54,7 +56,7 @@ async fn main() -> Result<()> {
 
     std::thread::spawn(move || {
         for sig in signals.forever() {
-            println!("Received signal {:?}", sig);
+            warn!("Received signal {:?}", sig);
             std::mem::drop(kernels);
             std::process::exit(0);
         }
@@ -62,7 +64,7 @@ async fn main() -> Result<()> {
 
     // Main bus listen loop
     let listener = TcpListener::bind(BUS_BIND_ADDRESS).await?;
-    println!("Listening on: {}", BUS_BIND_ADDRESS);
+    info!("Listening on: {}", BUS_BIND_ADDRESS);
     loop {
         let (mut socket, _) = listener.accept().await?;
         tokio::spawn(async move {

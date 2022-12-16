@@ -37,7 +37,7 @@ impl TcMultiQueue {
                 "kind" => {},
                 "options" => {},
                 _ => {
-                    println!("Unknown entry in Tc-MQ: {key}");
+                    log::error!("Unknown entry in Tc-MQ: {key}");
                 }
             }
         }
