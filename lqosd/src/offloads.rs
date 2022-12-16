@@ -1,5 +1,11 @@
 use tokio::process::Command;
 
+pub async fn bpf_sysctls() {
+    let _ = Command::new("/sbin/sysctl")
+        .arg(format!("net.core.bpf_jit_enable=1"))
+        .output().await;
+}
+
 pub async fn stop_irq_balance() {
     let _ = Command::new("/bin/systemctl")
         .args(["stop", "irqbalance"])

@@ -25,6 +25,7 @@ async fn main() -> Result<()> {
     let config = LibreQoSConfig::load()?;
 
     // Disable offloading
+    offloads::bpf_sysctls().await;
     offloads::stop_irq_balance().await;
     offloads::netdev_budget(20, 1).await;
     offloads::ethtool_tweaks(&config.internet_interface).await;
