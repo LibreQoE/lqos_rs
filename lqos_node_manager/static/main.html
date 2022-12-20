@@ -217,10 +217,10 @@
             for (let i=0; i<tt.length; i++) {
                 let color = color_ramp(tt[i].median_tcp_rtt);
                 html += "<tr style='background-color: " + color + "'>";
-                if (tt[i].tc_handle !=0) {
-                    html += "<td>" + tt[i].ip_address + "</td>";
+                if (tt[i].circuit_id != "") {
+                    html += "<td><a href='/circuit_queue?id=" + encodeURI(tt[i].circuit_id)  + "'>" + tt[i].ip_address + "</td>";
                 } else {
-                    html += "<td><a href='/shaped-add?ip=" + tt[i].ip_address + "'>" + tt[i].ip_address + "</a></td>";
+                    html += "<td>" + tt[i].ip_address + "</td>";
                 }
                 html += "<td>" + scaleNumber(tt[i].bits_per_second[0]) + "</td>";
                 html += "<td>" + scaleNumber(tt[i].bits_per_second[1]) + "</td>";
@@ -228,7 +228,7 @@
                 if (tt[i].tc_handle !=0) {
                     html += "<td><i class='fa fa-check-circle'></i> (" + tt[i].plan[0] + "/" + tt[i].plan[1] + ")</td>";
                 } else {
-                    html += "<td></td>";
+                    html += "<td><a class='btn btn-small btn-success' href='/shaped-add?ip=" + tt[i].ip_address + "'>Add Shaper</a></td>";
                 }
                 html += "</tr>";
             }

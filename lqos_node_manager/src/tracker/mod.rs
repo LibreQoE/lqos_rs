@@ -16,6 +16,7 @@ pub struct IpStatsWithPlan {
     pub packets_per_second: (u64, u64),
     pub median_tcp_rtt: f32,
     pub tc_handle: TcHandle,
+    pub circuit_id: String,
     pub plan: (u32, u32),
 }
 
@@ -27,6 +28,7 @@ impl From<&IpStats> for IpStatsWithPlan {
             packets_per_second: i.packets_per_second,
             median_tcp_rtt: i.median_tcp_rtt,
             tc_handle: i.tc_handle,
+            circuit_id: String::new(),
             plan: (0, 0),
         };
         if let Ok(ip) = result.ip_address.parse::<IpAddr>() {
@@ -38,7 +40,8 @@ impl From<&IpStats> for IpStatsWithPlan {
             if let Some((_, id)) = cfg.trie.longest_match(lookup) {
                 result.ip_address = format!("{} ({})", cfg.devices[*id].circuit_name, result.ip_address);
                 result.plan.0 = cfg.devices[*id].download_max_mbps;
-                result.plan.1 = cfg.devices[*id].download_max_mbps;
+                result.plan.1 = cfg.devices[*id].upload_max_mbps;
+                result.circuit_id = cfg.devices[*id].circuit_id.clone();
             }
         }
         result

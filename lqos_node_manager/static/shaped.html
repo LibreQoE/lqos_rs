@@ -96,7 +96,7 @@
             let html = "";
             for (let i=0; i<devices.length; i++) {
                 html += "<tr>";
-                html += "<td>" + devices[i].circuit_id + ": " +devices[i].circuit_name + "</td>";
+                html += "<td><a href='/circuit_queue?id=" + encodeURI(devices[i].circuit_id) + "'>" + devices[i].circuit_id + ": " +devices[i].circuit_name + "</a></td>";
                 html += "<td>" + devices[i].device_id + ": " + devices[i].device_name + "</td>";
                 html += "<td>" + devices[i].download_min_mbps + "/" + devices[i].upload_max_mbps + "</td>";
                 html += "<td style='font-size: 8pt'>";

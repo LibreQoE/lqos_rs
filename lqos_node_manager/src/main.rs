@@ -22,6 +22,7 @@ fn rocket() -> _ {
             static_pages::shaped_devices_csv_page,
             static_pages::shaped_devices_add_page,
             static_pages::unknown_devices_page,
+            static_pages::circuit_queue,
 
             // Our JS library
             static_pages::lqos_js,
