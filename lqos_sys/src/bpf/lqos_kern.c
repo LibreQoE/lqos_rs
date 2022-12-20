@@ -29,6 +29,7 @@ __be16 isp_vlan = 0;
 SEC("xdp")
 int xdp_prog(struct xdp_md *ctx)
 {
+    bpf_debug("XDP-RDR");
     if (direction == 255) {
         bpf_debug("Error: interface direction unspecified, aborting.");
         return XDP_PASS;
@@ -80,6 +81,7 @@ int xdp_prog(struct xdp_md *ctx)
 SEC("tc")
 int tc_iphash_to_cpu(struct __sk_buff *skb)
 {
+    bpf_debug("TC-MAP");
     if (direction == 255) {
         bpf_debug("Error: interface direction unspecified, aborting.");
         return TC_ACT_OK;

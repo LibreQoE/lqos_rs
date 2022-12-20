@@ -11,7 +11,7 @@ use anyhow::Result;
 use lqos_bus::{
     cookie_value, decode_request, encode_response, BusReply, BusRequest, BUS_BIND_ADDRESS,
 };
-use lqos_config::LibreQoSConfig;
+use lqos_config::{LibreQoSConfig, EtcLqos};
 use lqos_sys::LibreQoSKernels;
 use signal_hook::{consts::SIGINT, iterator::Signals};
 use tokio::{
@@ -23,19 +23,20 @@ use tokio::{
 async fn main() -> Result<()> {
     println!("LibreQoS Daemon Starting");
     let config = LibreQoSConfig::load()?;
+    let etc_lqos = EtcLqos::load()?;
 
     // Disable offloading
-    offloads::stop_irq_balance().await;
-    offloads::netdev_budget(20, 1).await;
-    offloads::ethtool_tweaks(&config.internet_interface).await;
-    offloads::ethtool_tweaks(&config.isp_interface).await;
+    if let Some(tuning) = &etc_lqos.tuning {
+        if tuning.stop_irq_balance {
+            offloads::stop_irq_balance().await;
+        }        
+        offloads::netdev_budget(tuning.netdev_budget_usecs, tuning.netdev_budget_packets).await;
+        offloads::ethtool_tweaks(&config.internet_interface, tuning).await;
+        offloads::ethtool_tweaks(&config.isp_interface, tuning).await;
+    }
 
     // Start the XDP/TC kernels
     let kernels = if config.on_a_stick_mode {
-        // Hack: Turn off RXVLAN
-        std::process::Command::new("ethtool")
-            .args(["-K", &config.internet_interface, "rxvlan", "off"])
-            .output()?;
         LibreQoSKernels::on_a_stick_mode(&config.internet_interface, config.stick_vlans.1, config.stick_vlans.0)?
     } else {
         LibreQoSKernels::new(&config.internet_interface, &config.isp_interface)?
