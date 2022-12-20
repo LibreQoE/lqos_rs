@@ -56,7 +56,7 @@ impl EtcLqos {
         }
         let raw = std::fs::read_to_string("/etc/lqos")?;
         let config: Self = toml::from_str(&raw)?;
-        println!("{:?}", config);
+        //println!("{:?}", config);
         Ok(config)
     }
 }

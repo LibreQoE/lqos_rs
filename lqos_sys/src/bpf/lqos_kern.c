@@ -16,6 +16,7 @@
 #include "common/lpm.h"
 #include "common/cpu_map.h"
 #include "common/tcp_rtt.h"
+#include "common/bifrost.h"
 
 // Constant passed in during loading to either
 // 1 (facing the Internet)
@@ -138,6 +139,28 @@ int tc_iphash_to_cpu(struct __sk_buff *skb)
     }
 
     return TC_ACT_OK;
+}
+
+// eBPF Bridge
+SEC("tc")
+int bifrost(struct __sk_buff *skb)
+{
+    bpf_debug("TC-Ingress invoked on interface: %u", skb->ifindex);
+    struct bifrost_interface * redirect_info = NULL;
+    __u32 my_interface = skb->ifindex;
+    redirect_info = bpf_map_lookup_elem(&bifrost_interface_map, &my_interface);
+    if (redirect_info) {
+        bpf_debug("Redirect info: to: %u, dir: %u", redirect_info->redirect_to, redirect_info->direction);
+        long ret = bpf_redirect(redirect_info->redirect_to, 0);
+        if (ret != TC_ACT_REDIRECT) {
+            bpf_debug("Redirect call failed");
+        } else {
+            return ret;
+        }
+    } else {
+        bpf_debug("No matching redirect record for interface %u", my_interface);
+    }
+    return TC_ACT_UNSPEC;
 }
 
 char _license[] SEC("license") = "GPL";

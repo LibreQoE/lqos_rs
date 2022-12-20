@@ -132,6 +132,112 @@ out:
 	return err;
 }
 
+int teardown_hook_ingress(int ifindex, const char * ifname, bool verbose)
+{
+	DECLARE_LIBBPF_OPTS(bpf_tc_hook, hook,
+			    .attach_point = BPF_TC_INGRESS,
+			    .ifindex = ifindex);
+	int err;
+
+	/* When destroying the hook, any and ALL attached TC-BPF (filter)
+	 * programs are also detached.
+	 */
+	err = bpf_tc_hook_destroy(&hook);
+	if (err)
+		fprintf(stderr, "Couldn't remove clsact qdisc on %s\n", ifname);
+
+	if (verbose)
+		printf("Flushed all TC-BPF egress programs (via destroy hook)\n");
+
+	return err;
+}
+
+int tc_detach_ingress(int ifindex, bool verbose, bool flush_hook, const char * ifname)
+{
+	int err;
+	DECLARE_LIBBPF_OPTS(bpf_tc_hook, hook, .ifindex = ifindex,
+			    .attach_point = BPF_TC_INGRESS);
+	DECLARE_LIBBPF_OPTS(bpf_tc_opts, opts_info);
+
+	opts_info.handle   = EGRESS_HANDLE;
+	opts_info.priority = EGRESS_PRIORITY;
+
+	/* Check what program we are removing */
+	err = bpf_tc_query(&hook, &opts_info);
+	if (err) {
+		fprintf(stderr, "No ingress program to detach "
+			"for ifindex %d (err:%d)\n", ifindex, err);
+		return err;
+	}
+	if (verbose)
+		printf("Detaching TC-BPF prog id:%d\n", opts_info.prog_id);
+
+	/* Attempt to detach program */
+	opts_info.prog_fd = 0;
+	opts_info.prog_id = 0;
+	opts_info.flags = 0;
+	err = bpf_tc_detach(&hook, &opts_info);
+	if (err) {
+		fprintf(stderr, "Cannot detach TC-BPF program id:%d "
+			"for ifindex %d (err:%d)\n", opts_info.prog_id,
+			ifindex, err);
+	}
+
+	if (flush_hook)
+		return teardown_hook(ifindex, ifname, verbose);
+
+	return err;
+}
+
+int tc_attach_ingress(int ifindex, bool verbose, struct lqos_kern *obj)
+{
+	int err = 0;
+	int fd;
+	DECLARE_LIBBPF_OPTS(bpf_tc_hook, hook, .attach_point = BPF_TC_INGRESS);
+	DECLARE_LIBBPF_OPTS(bpf_tc_opts, attach_egress);
+
+	/* Selecting BPF-prog here: */
+	//fd = bpf_program__fd(obj->progs.queue_map_4);
+	fd = bpf_program__fd(obj->progs.bifrost);
+	if (fd < 0) {
+		fprintf(stderr, "Couldn't find ingress program\n");
+		err = -ENOENT;
+		goto out;
+	}
+	attach_egress.prog_fd = fd;
+
+	hook.ifindex = ifindex;
+
+	err = bpf_tc_hook_create(&hook);
+	if (err && err != -EEXIST) {
+		fprintf(stderr, "Couldn't create TC-BPF hook for "
+			"ifindex %d (err:%d)\n", ifindex, err);
+		goto out;
+	}
+	if (verbose && err == -EEXIST) {
+		printf("Success: TC-BPF hook already existed "
+		       "(Ignore: \"libbpf: Kernel error message\")\n");
+	}
+
+	hook.attach_point = BPF_TC_INGRESS;
+	attach_egress.flags    = BPF_TC_F_REPLACE;
+	attach_egress.handle   = EGRESS_HANDLE;
+	attach_egress.priority = EGRESS_PRIORITY;
+	err = bpf_tc_attach(&hook, &attach_egress);
+	if (err) {
+		fprintf(stderr, "Couldn't attach egress program to "
+			"ifindex %d (err:%d)\n", hook.ifindex, err);
+		goto out;
+	}
+
+	if (verbose) {
+		printf("Attached TC-BPF program id:%d\n",
+		       attach_egress.prog_id);
+	}
+out:
+	return err;
+}
+
 /*******************************/
 
 static inline unsigned int bpf_num_possible_cpus(void)
