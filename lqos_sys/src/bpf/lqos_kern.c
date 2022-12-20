@@ -151,6 +151,29 @@ int bifrost(struct __sk_buff *skb)
     redirect_info = bpf_map_lookup_elem(&bifrost_interface_map, &my_interface);
     if (redirect_info) {
         bpf_debug("Redirect info: to: %u, dir: %u", redirect_info->redirect_to, redirect_info->direction);
+        // Do we have to worry about VLANs?
+        if (redirect_info->direction == 3) {
+            bpf_debug("VLAN lookup: %u", skb->vlan_tci);
+            __u32 vlan = skb->vlan_tci;
+            struct bifrost_vlan * vlan_info = NULL;
+            vlan_info = bpf_map_lookup_elem(&bifrost_vlan_map, &vlan);
+            if (vlan_info) {
+                bpf_debug("Found vlan match");
+                bpf_debug("new tag: %u, interface: %u", vlan_info->new_tag, vlan_info->interface);
+                
+                // Change the outbound VLAN tag
+                long ret = bpf_redirect(vlan_info->interface, 0);
+                if (ret != TC_ACT_REDIRECT) {
+                    bpf_debug("Redirect call failed");
+                } else {
+                    return ret;
+                }
+            } else {
+                bpf_debug("No vlan match");
+            }
+        }
+
+        // Do the normal interface redirect
         long ret = bpf_redirect(redirect_info->redirect_to, 0);
         if (ret != TC_ACT_REDIRECT) {
             bpf_debug("Redirect call failed");
