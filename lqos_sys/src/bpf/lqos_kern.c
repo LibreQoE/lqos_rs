@@ -192,9 +192,12 @@ int bifrost(struct __sk_buff *skb)
 
         // Do the normal interface redirect
         // Don't do it if source and destination are the same
-        if (!skb->ifindex == redirect_info->redirect_to) {
-            bpf_debug("Not redirecting: source and destination are the same.");
-            return TC_ACT_UNSPEC;
+        // UNLESS we are scanning VLANs and a VLAN is present
+        if (!(redirect_info->scan_vlans && skb->vlan_tci > 0)) {
+            if (!skb->ifindex == redirect_info->redirect_to) {
+                bpf_debug("Not redirecting: source and destination are the same.");
+                return TC_ACT_UNSPEC;
+            }
         }
 
         // If it makes sense, actually do the redirect.
