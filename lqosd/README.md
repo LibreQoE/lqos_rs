@@ -58,8 +58,8 @@ interface_mapping = [
 	{ name = "eth1", redirect_to = "eth1", scan_vlans = true },
 ]
 vlan_mapping = [
-	{ parent = "eth1", tag = 3, redirect_to = "eth1.4" },
-	{ parent = "eth1", tag = 4, redirect_to = "eth1.3" },
+	{ parent = "eth1", tag = 3, redirect_to = 4 },
+	{ parent = "eth1", tag = 4, redirect_to = 3 },
 ]
 ```
 

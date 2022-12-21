@@ -35,14 +35,26 @@ int xdp_prog(struct xdp_md *ctx)
         bpf_debug("Error: interface direction unspecified, aborting.");
         return XDP_PASS;
     }
+
+    bool vlan_redirect = false;
+    {
+        __u32 my_interface = ctx->ingress_ifindex;
+        struct bifrost_interface * redirect_info = NULL;
+        redirect_info = bpf_map_lookup_elem(&bifrost_interface_map, &my_interface);
+        if (redirect_info) {
+            vlan_redirect = true;
+            bpf_debug("VLAN redirection requested for this interface");
+        }
+    }
+
     struct dissector_t dissector = {0};
     //bpf_debug("START XDP");
     //bpf_debug("Running mode %u", direction);
     //bpf_debug("Scan VLANs: %u %u", internet_vlan, isp_vlan);
     if (!dissector_new(ctx, &dissector)) return XDP_PASS;
-    if (!dissector_find_l3_offset(&dissector)) return XDP_PASS;
+    if (!dissector_find_l3_offset(&dissector, vlan_redirect)) return XDP_PASS;
     if (!dissector_find_ip_header(&dissector)) return XDP_PASS;
-    //bpf_debug("Spotted VLAN: %u", dissector.current_vlan);
+    bpf_debug("Spotted VLAN: %u", dissector.current_vlan);
 
     // Determine the lookup key by direction
     struct ip_hash_key lookup_key;
@@ -151,6 +163,10 @@ int bifrost(struct __sk_buff *skb)
     redirect_info = bpf_map_lookup_elem(&bifrost_interface_map, &my_interface);
     if (redirect_info) {        
         bpf_debug("Redirect info: to: %u, scan vlans: %d", redirect_info->redirect_to, redirect_info->scan_vlans);
+        
+        // Disabling VLAN redirect
+        // We have to do the rewriting in the XDP layer
+        /*
         // Do we have to worry about VLANs?
         if (redirect_info->scan_vlans != 0) {
             bpf_debug("VLAN lookup: %u:%u", skb->ifindex, skb->vlan_tci);
@@ -172,11 +188,12 @@ int bifrost(struct __sk_buff *skb)
             } else {
                 bpf_debug("No vlan match");
             }
-        }
+        }*/
 
         // Do the normal interface redirect
-        if (skb->ifindex == redirect_info->redirect_to) {
-            bpf_debug("Non-VLAN redirect, out matches in. Not redirecting.");
+        // Don't do it if source and destination are the same
+        if (!skb->ifindex == redirect_info->redirect_to) {
+            bpf_debug("Not redirecting: source and destination are the same.");
             return TC_ACT_UNSPEC;
         }
 

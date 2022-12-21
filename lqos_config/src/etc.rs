@@ -39,7 +39,7 @@ pub struct BridgeInterface {
 pub struct BridgeVlan {
     pub parent: String,
     pub tag: u32,
-    pub redirect_to: String,
+    pub redirect_to: u32,
 }
 
 impl EtcLqos {

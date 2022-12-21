@@ -8,6 +8,7 @@
 #include "../common/skb_safety.h"
 #include "../common/debug.h"
 #include "../common/ip_hash.h"
+#include "../common/bifrost.h"
 
 struct dissector_t
 {
@@ -75,7 +76,7 @@ static __always_inline bool is_ip(__u16 eth_type)
     return eth_type == ETH_P_IP || eth_type == ETH_P_IPV6;
 }
 
-static __always_inline bool dissector_find_l3_offset(struct dissector_t *dissector)
+static __always_inline bool dissector_find_l3_offset(struct dissector_t *dissector, bool vlan_redirect)
 {
     if (dissector->ethernet_header == NULL)
     {
@@ -117,6 +118,18 @@ static __always_inline bool dissector_find_l3_offset(struct dissector_t *dissect
             dissector->current_vlan = vlan->h_vlan_TCI;
             eth_type = bpf_ntohs(vlan->h_vlan_encapsulated_proto);
             offset += sizeof(struct vlan_hdr);
+            // VLAN Redirection is requested, so lookup a detination and
+            // switch the VLAN tag if required
+            if (vlan_redirect) {
+                bpf_debug("Searching for redirect %u:%u", dissector->ctx->ingress_ifindex, bpf_ntohs(dissector->current_vlan));
+                __u32 key = (dissector->ctx->ingress_ifindex << 16) | bpf_ntohs(dissector->current_vlan);
+                struct bifrost_vlan * vlan_info = NULL;
+                vlan_info = bpf_map_lookup_elem(&bifrost_vlan_map, &key);
+                if (vlan_info) {
+                    bpf_debug("Redirect to VLAN %u", bpf_htons(vlan_info->redirect_to));
+                    vlan->h_vlan_TCI = bpf_htons(vlan_info->redirect_to);
+                }
+            }
         }
         break;
 
