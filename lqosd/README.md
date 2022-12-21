@@ -43,25 +43,24 @@ To enable the kernel-side eBPF bridge, edit `/etc/lqos`:
 [bridge]
 use_kernel_bridge = true
 interface_mapping = [
-	{ name = "eth1", interface_type = "Internet", redirect_to = "eth2" },
-	{ name = "eth2", interface_type = "Isp", redirect_to = "eth1" }
+	{ name = "eth1", redirect_to = "eth2", scan_vlans = false },
+	{ name = "eth2", redirect_to = "eth1", scan_vlans = false }
 ]
 vlan_mapping = []
 ```
 
-Each interface must be a *physical* interface, not a VLAN. If you want to do more complicated VLAN bridging (including "on a stick" mode - with a single interface and VLANs for different directions) you need to set an interface as `interface_type = "Trunk"`. For example:
+Each interface must be a *physical* interface, not a VLAN. If you set `scan_vlans` to `true`, you can specify mapping rules.
 
 ```toml
 [bridge]
 use_kernel_bridge = true
 interface_mapping = [
-	{ name = "eth1", interface_type = "Trunk", redirect_to = "eth1" },
+	{ name = "eth1", redirect_to = "eth1", scan_vlans = true },
 ]
 vlan_mapping = [
-	{ internet_tag = 3, isp_tag = 4, redirect_to = "eth1" }
+	{ parent = "eth1", tag = 3, redirect_to = "eth1.4" },
+	{ parent = "eth1", tag = 4, redirect_to = "eth1.3" },
 ]
 ```
 
-Reciprocal mappings are created automatically. You can have multiple trunk interfaces if you wish, and can mix-and-match VLAN directions. You can effectively create multiple bridges using the `redirect_to` feature.
-
-When you are using "on a stick" mode, you need to redirect to the same interface.
+Reciprocal mappings are created NOT automatically, you have to specify each mapping. When you are using "on a stick" mode, you need to redirect to the same interface.

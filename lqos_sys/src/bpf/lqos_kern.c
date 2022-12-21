@@ -145,24 +145,25 @@ int tc_iphash_to_cpu(struct __sk_buff *skb)
 SEC("tc")
 int bifrost(struct __sk_buff *skb)
 {
-    bpf_debug("TC-Ingress invoked on interface: %u", skb->ifindex);
+    bpf_debug("TC-Ingress invoked on interface: %u . %u", skb->ifindex, skb->vlan_tci);
     struct bifrost_interface * redirect_info = NULL;
     __u32 my_interface = skb->ifindex;
     redirect_info = bpf_map_lookup_elem(&bifrost_interface_map, &my_interface);
-    if (redirect_info) {
-        bpf_debug("Redirect info: to: %u, dir: %u", redirect_info->redirect_to, redirect_info->direction);
+    if (redirect_info) {        
+        bpf_debug("Redirect info: to: %u, scan vlans: %d", redirect_info->redirect_to, redirect_info->scan_vlans);
         // Do we have to worry about VLANs?
-        if (redirect_info->direction == 3) {
-            bpf_debug("VLAN lookup: %u", skb->vlan_tci);
-            __u32 vlan = skb->vlan_tci;
+        if (redirect_info->scan_vlans != 0) {
+            bpf_debug("VLAN lookup: %u:%u", skb->ifindex, skb->vlan_tci);
+            __u32 key = (skb->ifindex << 16) | skb->vlan_tci;
+            bpf_debug("Key: %u", key);
             struct bifrost_vlan * vlan_info = NULL;
-            vlan_info = bpf_map_lookup_elem(&bifrost_vlan_map, &vlan);
+            vlan_info = bpf_map_lookup_elem(&bifrost_vlan_map, &key);
             if (vlan_info) {
                 bpf_debug("Found vlan match");
-                bpf_debug("new tag: %u, interface: %u", vlan_info->new_tag, vlan_info->interface);
+                bpf_debug("Redirect to: %u", vlan_info->redirect_to);
                 
-                // Change the outbound VLAN tag
-                long ret = bpf_redirect(vlan_info->interface, 0);
+                // Redirect to VLAN interface
+                long ret = bpf_redirect(vlan_info->redirect_to, 0);
                 if (ret != TC_ACT_REDIRECT) {
                     bpf_debug("Redirect call failed");
                 } else {
@@ -174,6 +175,12 @@ int bifrost(struct __sk_buff *skb)
         }
 
         // Do the normal interface redirect
+        if (skb->ifindex == redirect_info->redirect_to) {
+            bpf_debug("Non-VLAN redirect, out matches in. Not redirecting.");
+            return TC_ACT_UNSPEC;
+        }
+
+        // If it makes sense, actually do the redirect.
         long ret = bpf_redirect(redirect_info->redirect_to, 0);
         if (ret != TC_ACT_REDIRECT) {
             bpf_debug("Redirect call failed");

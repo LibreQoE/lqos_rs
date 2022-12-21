@@ -7,16 +7,13 @@ use crate::{bpf_map::BpfMap, lqos_kernel::interface_name_to_index};
 #[derive(Default, Clone, Debug)]
 struct BifrostInterface {
     redirect_to: u32,
-    direction: u32,
+    scan_vlans: u32,
 }
 
 #[repr(C)]
 #[derive(Default, Clone, Debug)]
 struct BifrostVlan {
-    match_tag: u16,
-    new_tag: u16,
-    direction: u32,
-    interface: u32,
+    redirect_to: u32,
 }
 
 const INTERFACE_PATH: &str = "/sys/fs/bpf/bifrost_interface_map";
@@ -43,11 +40,10 @@ pub(crate) fn map_interfaces(mappings: &[BridgeInterface]) -> Result<()> {
         let redirect_to = interface_name_to_index(&mapping.redirect_to)?;
         let mut mapping = BifrostInterface {
             redirect_to,
-            direction: match mapping.interface_type {
-                lqos_config::InterfaceFacing::Internet => 1,
-                lqos_config::InterfaceFacing::Isp => 2,
-                lqos_config::InterfaceFacing::Trunk => 3,
-            }
+            scan_vlans: match mapping.scan_vlans {
+                true => 1,
+                false => 0,
+            },
         };
         interface_map.insert(&mut from, &mut mapping)?;
         println!("Mapped bifrost interface {}->{}", from, redirect_to);
@@ -59,15 +55,13 @@ pub(crate) fn map_vlans(mappings: &[BridgeVlan]) -> Result<()> {
     println!("VLAN maps");
     let mut vlan_map = BpfMap::<u32, BifrostVlan>::from_path(VLAN_PATH)?;
     for mapping in mappings.iter() {
-        let mut from = mapping.internet_tag;
-        let mut mapping = BifrostVlan {
-            match_tag: mapping.internet_tag as u16,
-            new_tag: mapping.isp_tag as u16,
-            direction: 1,
-            interface: interface_name_to_index(&mapping.redirect_to)?,
+        let mut key: u32 = (interface_name_to_index(&mapping.parent)? << 16) | mapping.tag;
+        let mut val = BifrostVlan {
+            redirect_to: interface_name_to_index(&mapping.redirect_to)?,
         };
-        vlan_map.insert(&mut from, &mut mapping)?;
-        println!("Mapped bifrost VLAN {}", from);
+        vlan_map.insert(&mut key, &mut val)?;
+        println!("Mapped bifrost VLAN: {}:{} => {}", mapping.parent, mapping.tag, mapping.redirect_to);
+        println!("{key}");
     }
     Ok(())
 }

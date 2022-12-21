@@ -8,7 +8,7 @@
 
 struct bifrost_interface {
     __u32 redirect_to;
-    __u32 direction;
+    __u32 scan_vlans;
 };
 
 struct {
@@ -20,10 +20,7 @@ struct {
 } bifrost_interface_map SEC(".maps");
 
 struct bifrost_vlan {
-    __u16 match_tag;
-    __u16 new_tag;
-    __u32 direction;
-    __u32 interface;
+    __u32 redirect_to;
 };
 
 struct {

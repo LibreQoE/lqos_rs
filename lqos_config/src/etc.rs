@@ -31,22 +31,15 @@ pub struct BridgeConfig {
 #[derive(Deserialize, Clone, Debug)]
 pub struct BridgeInterface {
     pub name: String,
-    pub interface_type: InterfaceFacing,
+    pub scan_vlans: bool,
     pub redirect_to: String,
 }
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct BridgeVlan {
-    pub internet_tag: u32,
-    pub isp_tag: u32,
+    pub parent: String,
+    pub tag: u32,
     pub redirect_to: String,
-}
-
-#[derive(Deserialize, Clone, Debug)]
-pub enum InterfaceFacing {
-    Internet,
-    Isp,
-    Trunk,
 }
 
 impl EtcLqos {
