@@ -184,6 +184,10 @@ int tc_iphash_to_cpu(struct __sk_buff *skb)
     } // Scope to remove tcq_cfg when done with it
 
     // Once again parse the packet
+    // Note that we are returning OK on failure, which is a little odd.
+    // The reasoning being that if its a packet we don't know how to handle,
+    // we probably don't want to drop it - to ensure that IS-IS, ARP, STP
+    // and other packet types are still handled by the default queues.
     struct tc_dissector_t dissector = {0};
     if (!tc_dissector_new(skb, &dissector)) return TC_ACT_OK;
     if (!tc_dissector_find_l3_offset(&dissector)) return TC_ACT_OK;
