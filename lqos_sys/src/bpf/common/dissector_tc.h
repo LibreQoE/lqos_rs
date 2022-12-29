@@ -10,17 +10,30 @@
 #include "../common/ip_hash.h"
 #include "dissector.h"
 
+// Structure holding packet dissection information (obtained at the TC level)
 struct tc_dissector_t
 {
+    // Pointer to the SKB context.
     struct __sk_buff *ctx;
+    // Pointer to the data start
     void *start;
+    // Pointer to the data end
     void *end;
+    // Pointer to the Ethernet header once obtained (NULL until then)
     struct ethhdr *ethernet_header;
+    // Ethernet packet type, once obtained
     __u16 eth_type;
+    // Start of layer-3 data, once obtained
     __u32 l3offset;
+    // IP header (either v4 or v6), once obtained.
     union iph_ptr ip_header;
+    // Source IP, encoded by `ip_hash.h` functions.
     struct in6_addr src_ip;
+    // Destination IP, encoded by `ip_hash.h` functions.
     struct in6_addr dst_ip;
+    // Current VLAN detected.
+    // TODO: This can probably be removed since the packet dissector
+    // now finds this.
     __be16 current_vlan;
 };
 
@@ -31,8 +44,10 @@ struct tc_dissector_t
 // * dissector - pointer to a local dissector object to be initialized
 //
 // Returns TRUE if all is good, FALSE if the process cannot be completed
-static __always_inline bool tc_dissector_new(struct __sk_buff *ctx, struct tc_dissector_t *dissector)
-{
+static __always_inline bool tc_dissector_new(
+    struct __sk_buff *ctx, 
+    struct tc_dissector_t *dissector
+) {
     dissector->ctx = ctx;
     dissector->start = (void *)(long)ctx->data;
     dissector->end = (void *)(long)ctx->data_end;
@@ -50,8 +65,10 @@ static __always_inline bool tc_dissector_new(struct __sk_buff *ctx, struct tc_di
     return true;
 }
 
-static __always_inline bool tc_dissector_find_l3_offset(struct tc_dissector_t *dissector)
-{
+// Search a context to find the layer-3 offset.
+static __always_inline bool tc_dissector_find_l3_offset(
+    struct tc_dissector_t *dissector
+) {
     if (dissector->ethernet_header == NULL)
     {
         bpf_debug("Ethernet header is NULL, still called offset check.");
@@ -84,12 +101,14 @@ static __always_inline bool tc_dissector_find_l3_offset(struct tc_dissector_t *d
         case ETH_P_8021AD:
         case ETH_P_8021Q:
         {
-            if SKB_OVERFLOW_OFFSET (dissector->start, dissector->end, offset, vlan_hdr)
+            if SKB_OVERFLOW_OFFSET (dissector->start, dissector->end, 
+                offset, vlan_hdr)
             {
                 return false;
             }
             //bpf_debug("TC Found VLAN");
-            struct vlan_hdr *vlan = (struct vlan_hdr *)(dissector->start + offset);
+            struct vlan_hdr *vlan = (struct vlan_hdr *)
+                (dissector->start + offset);
             // Calculated from the SKB
             //dissector->current_vlan = vlan->h_vlan_TCI;
             eth_type = bpf_ntohs(vlan->h_vlan_encapsulated_proto);
@@ -100,11 +119,13 @@ static __always_inline bool tc_dissector_find_l3_offset(struct tc_dissector_t *d
         // Handle PPPoE
         case ETH_P_PPP_SES:
         {
-            if SKB_OVERFLOW_OFFSET (dissector->start, dissector->end, offset, pppoe_proto)
+            if SKB_OVERFLOW_OFFSET (dissector->start, dissector->end, 
+                offset, pppoe_proto)
             {
                 return false;
             }
-            struct pppoe_proto *pppoe = (struct pppoe_proto *)(dissector->start + offset);
+            struct pppoe_proto *pppoe = (struct pppoe_proto *)
+                (dissector->start + offset);
             __u16 proto = bpf_ntohs(pppoe->proto);
             switch (proto)
             {
@@ -132,16 +153,22 @@ static __always_inline bool tc_dissector_find_l3_offset(struct tc_dissector_t *d
     return true;
 }
 
-static __always_inline bool tc_dissector_find_ip_header(struct tc_dissector_t *dissector)
-{
+// Locate the IP header if present
+static __always_inline bool tc_dissector_find_ip_header(
+    struct tc_dissector_t *dissector
+) {
     switch (dissector->eth_type)
     {
     case ETH_P_IP:
     {
-        if (dissector->start + dissector->l3offset + sizeof(struct iphdr) > dissector->end) return false;
+        if (dissector->start + dissector->l3offset + 
+            sizeof(struct iphdr) > dissector->end) {
+                return false;
+        }
         dissector->ip_header.iph = dissector->start + dissector->l3offset;
-        if (dissector->ip_header.iph + 1 > dissector->end)
+        if (dissector->ip_header.iph + 1 > dissector->end) {
             return false;
+        }
         encode_ipv4(dissector->ip_header.iph->saddr, &dissector->src_ip);
         encode_ipv4(dissector->ip_header.iph->daddr, &dissector->dst_ip);
         return true;
@@ -149,7 +176,10 @@ static __always_inline bool tc_dissector_find_ip_header(struct tc_dissector_t *d
     break;
     case ETH_P_IPV6:
     {
-        if (dissector->start + dissector->l3offset + sizeof(struct ipv6hdr) > dissector->end) return false;
+        if (dissector->start + dissector->l3offset + 
+            sizeof(struct ipv6hdr) > dissector->end) {
+                return false;
+        }
         dissector->ip_header.ip6h = dissector->start + dissector->l3offset;
         if (dissector->ip_header.iph + 1 > dissector->end)
             return false;
