@@ -30,7 +30,9 @@ __be16 isp_vlan = 0;
 SEC("xdp")
 int xdp_prog(struct xdp_md *ctx)
 {
+#ifdef VERBOSE
     bpf_debug("XDP-RDR");
+#endif
     if (direction == 255) {
         bpf_debug("Error: interface direction unspecified, aborting.");
         return XDP_PASS;
@@ -43,24 +45,30 @@ int xdp_prog(struct xdp_md *ctx)
         redirect_info = bpf_map_lookup_elem(&bifrost_interface_map, &my_interface);
         if (redirect_info) {
             vlan_redirect = true;
-            bpf_debug("VLAN redirection requested for this interface");
+            bpf_debug("(XDP) VLAN redirection requested for this interface");
         }
     }
 
     struct dissector_t dissector = {0};
-    //bpf_debug("START XDP");
-    //bpf_debug("Running mode %u", direction);
-    //bpf_debug("Scan VLANs: %u %u", internet_vlan, isp_vlan);
+#ifdef VERBOSE
+    bpf_debug("(XDP) START XDP");
+    bpf_debug("(XDP) Running mode %u", direction);
+    bpf_debug("(XDP) Scan VLANs: %u %u", internet_vlan, isp_vlan);
+#endif
     if (!dissector_new(ctx, &dissector)) return XDP_PASS;
     if (!dissector_find_l3_offset(&dissector, vlan_redirect)) return XDP_PASS;
     if (!dissector_find_ip_header(&dissector)) return XDP_PASS;
-    bpf_debug("Spotted VLAN: %u", dissector.current_vlan);
+#ifdef VERBOSE
+    bpf_debug("(XDP) Spotted VLAN: %u", dissector.current_vlan);
+#endif
 
     // Determine the lookup key by direction
     struct ip_hash_key lookup_key;
     int effective_direction = 0;
     struct ip_hash_info * ip_info = setup_lookup_key_and_tc_cpu(direction, &lookup_key, &dissector, internet_vlan, &effective_direction);
-    //bpf_debug("Effective direction: %d", effective_direction);
+#ifdef VERBOSE
+    bpf_debug("(XDP) Effective direction: %d", effective_direction);
+#endif
 
     __u32 tc_handle = 0;
     __u32 cpu = 0;
@@ -82,10 +90,14 @@ int xdp_prog(struct xdp_md *ctx)
         __u32 cpu_dest = *cpu_lookup;
 
         // Redirect based on CPU
-        //bpf_debug("Zooming to CPU: %u", cpu_dest);
-        //bpf_debug("Mapped to handle: %u", tc_handle);
+#ifdef VERBOSE
+        bpf_debug("(XDP) Zooming to CPU: %u", cpu_dest);
+        bpf_debug("(XDP) Mapped to handle: %u", tc_handle);
+#endif
         long redirect_result = bpf_redirect_map(&cpu_map, cpu_dest, 0);
-        //bpf_debug("Redirect result: %u", redirect_result);
+#ifdef VERBOSE
+        bpf_debug("(XDP) Redirect result: %u", redirect_result);
+#endif
         return redirect_result;
     }
 	return XDP_PASS;
@@ -94,9 +106,11 @@ int xdp_prog(struct xdp_md *ctx)
 SEC("tc")
 int tc_iphash_to_cpu(struct __sk_buff *skb)
 {
+#ifdef VERBOSE
     bpf_debug("TC-MAP");
+#endif
     if (direction == 255) {
-        bpf_debug("Error: interface direction unspecified, aborting.");
+        bpf_debug("(TC) Error: interface direction unspecified, aborting.");
         return TC_ACT_OK;
     }
     //bpf_debug("SKB VLAN TCI: %u", skb->vlan_tci);    
@@ -114,7 +128,7 @@ int tc_iphash_to_cpu(struct __sk_buff *skb)
         if (txq_cfg->queue_mapping != 0) {
             skb->queue_mapping = txq_cfg->queue_mapping;
         } else {
-            bpf_debug("Misconf: CPU:%u no conf (curr qm:%d)\n", cpu, skb->queue_mapping);
+            bpf_debug("(TC) Misconf: CPU:%u no conf (curr qm:%d)\n", cpu, skb->queue_mapping);
         }
     } // Scope to remove tcq_cfg when done with it
 
@@ -129,7 +143,9 @@ int tc_iphash_to_cpu(struct __sk_buff *skb)
     struct ip_hash_key lookup_key;
     int effective_direction = 0;
     struct ip_hash_info * ip_info = tc_setup_lookup_key_and_tc_cpu(direction, &lookup_key, &dissector, internet_vlan, &effective_direction);
-    //bpf_debug("TC effective direction: %d", effective_direction);
+#ifdef VERBOSE
+    bpf_debug("(TC) effective direction: %d", effective_direction);
+#endif
 
     // Temporary pping integration - needs a lot of cleaning
     struct parsing_context context = {0};
@@ -141,74 +157,77 @@ int tc_iphash_to_cpu(struct __sk_buff *skb)
 
     if (ip_info && ip_info->tc_handle != 0) {
         // We found a matching mapped TC flow
-        //bpf_debug("Mapped to TC handle %x", ip_info->tc_handle);
+#ifdef VERBOSE
+        bpf_debug("(TC) Mapped to TC handle %x", ip_info->tc_handle);
+#endif
         skb->priority = ip_info->tc_handle;
         return TC_ACT_OK;
     } else {
         // We didn't find anything
-        //bpf_debug("TC didn't map anything");
+#ifdef VERBOSE
+        bpf_debug("(TC) didn't map anything");
+#endif
         return TC_ACT_OK;
     }
 
     return TC_ACT_OK;
 }
 
+static __always_inline long do_tc_redirect(__u32 target) {
+    long ret = bpf_redirect(target, 0);
+    if (ret != TC_ACT_REDIRECT) {
+        bpf_debug("(TC-IN) TC Redirect call failed");
+        return TC_ACT_UNSPEC;
+    } else {
+        return ret;
+    }
+}
+
 // eBPF Bridge
 SEC("tc")
 int bifrost(struct __sk_buff *skb)
 {
+#ifdef VERBOSE
     bpf_debug("TC-Ingress invoked on interface: %u . %u", skb->ifindex, skb->vlan_tci);
+#endif
     struct bifrost_interface * redirect_info = NULL;
     __u32 my_interface = skb->ifindex;
     redirect_info = bpf_map_lookup_elem(&bifrost_interface_map, &my_interface);
-    if (redirect_info) {        
-        bpf_debug("Redirect info: to: %u, scan vlans: %d", redirect_info->redirect_to, redirect_info->scan_vlans);
-        
-        // Disabling VLAN redirect
-        // We have to do the rewriting in the XDP layer
-        /*
-        // Do we have to worry about VLANs?
-        if (redirect_info->scan_vlans != 0) {
-            bpf_debug("VLAN lookup: %u:%u", skb->ifindex, skb->vlan_tci);
-            __u32 key = (skb->ifindex << 16) | skb->vlan_tci;
-            bpf_debug("Key: %u", key);
-            struct bifrost_vlan * vlan_info = NULL;
-            vlan_info = bpf_map_lookup_elem(&bifrost_vlan_map, &key);
-            if (vlan_info) {
-                bpf_debug("Found vlan match");
-                bpf_debug("Redirect to: %u", vlan_info->redirect_to);
-                
-                // Redirect to VLAN interface
-                long ret = bpf_redirect(vlan_info->redirect_to, 0);
-                if (ret != TC_ACT_REDIRECT) {
-                    bpf_debug("Redirect call failed");
-                } else {
-                    return ret;
-                }
-            } else {
-                bpf_debug("No vlan match");
-            }
-        }*/
+    if (redirect_info) {
+#ifdef VERBOSE
+        bpf_debug("(TC-IN) Redirect info: to: %u, scan vlans: %d", redirect_info->redirect_to, redirect_info->scan_vlans);
+#endif
 
-        // Do the normal interface redirect
-        // Don't do it if source and destination are the same
-        // UNLESS we are scanning VLANs and a VLAN is present
-        if (!(redirect_info->scan_vlans && skb->vlan_tci > 0)) {
-            if (!skb->ifindex == redirect_info->redirect_to) {
-                bpf_debug("Not redirecting: source and destination are the same.");
+        if (redirect_info->scan_vlans) {
+            // We are in VLAN redirect mode. If VLAN redirection is required,
+            // it already happened in the XDP stage (rewriting the header).
+            //
+            // We need to ONLY redirect if we have tagged packets, otherwise
+            // we create STP loops and Bad Things (TM) happen.
+            if (skb->vlan_tci > 0) {
+                return do_tc_redirect(redirect_info->redirect_to);
+            } else {
+#ifdef VERBOSE
+                bpf_debug("(TC-IN) Not redirecting: packet source and destination the same, no VLAN tag.");
+#endif
                 return TC_ACT_UNSPEC;
             }
-        }
-
-        // If it makes sense, actually do the redirect.
-        long ret = bpf_redirect(redirect_info->redirect_to, 0);
-        if (ret != TC_ACT_REDIRECT) {
-            bpf_debug("Redirect call failed");
         } else {
-            return ret;
+            // We're in regular redirect mode. So if we aren't trying to send
+            // a packet out via the interface it arrived, we can redirect.
+            if (skb->ifindex == redirect_info->redirect_to) {
+#ifdef VERBOSE
+                bpf_debug("(TC-IN) Not redirecting: source and destination are the same.");
+#endif
+                return TC_ACT_UNSPEC;
+            } else {
+                return do_tc_redirect(redirect_info->redirect_to);
+            }
         }
     } else {
-        bpf_debug("No matching redirect record for interface %u", my_interface);
+#ifdef VERBOSE
+        bpf_debug("(TC-IN) No matching redirect record for interface %u", my_interface);
+#endif
     }
     return TC_ACT_UNSPEC;
 }
