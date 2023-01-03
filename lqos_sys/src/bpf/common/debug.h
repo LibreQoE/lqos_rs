@@ -3,7 +3,7 @@
 // Define VERBOSE if you want to fill
 // `/sys/kernel/debug/tracing/trace_pipe` with per-packet debug
 // info. You usually don't want this.
-#define VERBOSE 1
+//#define VERBOSE 1
 
 #define bpf_debug(fmt, ...)                        \
 	({                                             \
