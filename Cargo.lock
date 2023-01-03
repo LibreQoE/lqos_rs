@@ -1219,6 +1219,7 @@ dependencies = [
  "byteorder",
  "libbpf-sys",
  "lqos_bus",
+ "lqos_config",
  "nix",
 ]
 

@@ -8,6 +8,7 @@
 #include "maximums.h"
 #include "debug.h"
 
+// Counter for each host
 struct host_counter {
     __u64 download_bytes;
     __u64 upload_bytes;
@@ -16,6 +17,8 @@ struct host_counter {
     __u32 tc_handle;
 };
 
+// Pinned map storing counters per host. its an LRU structure: if it
+// runs out of space, the least recently seen host will be removed.
 struct
 {
 	__uint(type, BPF_MAP_TYPE_LRU_PERCPU_HASH);
@@ -25,9 +28,15 @@ struct
 	__uint(pinning, LIBBPF_PIN_BY_NAME);
 } map_traffic SEC(".maps");
 
-static __always_inline void track_traffic(int direction, struct in6_addr * key, __u32 size, __u32 tc_handle) {
+static __always_inline void track_traffic(
+    int direction, 
+    struct in6_addr * key, 
+    __u32 size, 
+    __u32 tc_handle
+) {
     // Count the bits. It's per-CPU, so we can't be interrupted - no sync required
-    struct host_counter * counter = (struct host_counter *)bpf_map_lookup_elem(&map_traffic, key);
+    struct host_counter * counter = 
+        (struct host_counter *)bpf_map_lookup_elem(&map_traffic, key);
     if (counter) {
         if (direction == 1) {
             // Download

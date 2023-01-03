@@ -175,8 +175,10 @@ struct
  * also needs to reverse the flow to report the "correct" (consistent
  * with Kathie's PPing) src and dest address.
  */
-static __always_inline void reverse_flow(struct network_tuple *dest, struct network_tuple *src)
-{
+static __always_inline void reverse_flow(
+    struct network_tuple *dest, 
+    struct network_tuple *src
+) {
     dest->ipv = src->ipv;
     dest->proto = src->proto;
     dest->saddr = src->daddr;
@@ -191,8 +193,11 @@ static __always_inline void reverse_flow(struct network_tuple *dest, struct netw
  * __builtin_memcmp should work constant size but I still get the "failed to
  * find BTF for extern" error.
  */
-static __always_inline int my_memcmp(const void *s1_, const void *s2_, __u32 size)
-{
+static __always_inline int my_memcmp(
+    const void *s1_, 
+    const void *s2_, 
+    __u32 size
+) {
     const __u8 *s1 = (const __u8 *)s1_, *s2 = (const __u8 *)s2_;
     int i;
 
@@ -210,9 +215,10 @@ static __always_inline bool is_dualflow_key(struct network_tuple *flow)
     return my_memcmp(&flow->saddr, &flow->daddr, sizeof(flow->saddr)) <= 0;
 }
 
-static __always_inline struct flow_state *fstate_from_dfkey(struct dual_flow_state *df_state,
-                                                            bool is_dfkey)
-{
+static __always_inline struct flow_state *fstate_from_dfkey(
+    struct dual_flow_state *df_state,
+    bool is_dfkey
+) {
     if (!df_state) {
         return (struct flow_state *)NULL;
     }
@@ -226,9 +232,12 @@ static __always_inline struct flow_state *fstate_from_dfkey(struct dual_flow_sta
  * byte order).
  * Returns 0 if sucessful and -1 on failure
  */
-static __always_inline int parse_tcp_ts(struct tcphdr *tcph, void *data_end, __u32 *tsval,
-                                        __u32 *tsecr)
-{
+static __always_inline int parse_tcp_ts(
+    struct tcphdr *tcph, 
+    void *data_end, 
+    __u32 *tsval,
+    __u32 *tsecr
+) {
     int len = tcph->doff << 2;
     void *opt_end = (void *)tcph + len;
     __u8 *pos = (__u8 *)(tcph + 1); // Current pos in TCP options
@@ -288,12 +297,16 @@ static __always_inline int parse_tcp_ts(struct tcphdr *tcph, void *data_end, __u
  * appropriately and 0 will be returned.
  * On failure -1 will be returned (and arguments will not be set).
  */
-static __always_inline int parse_tcp_identifier(struct parsing_context *context,
-                                                __u16 *sport,
-                                                __u16 *dport, struct protocol_info *proto_info)
-{
-    if (parse_tcp_ts(context->tcp, context->dissector->end, &proto_info->pid, &proto_info->reply_pid) < 0)
+static __always_inline int parse_tcp_identifier(
+    struct parsing_context *context,
+    __u16 *sport,
+    __u16 *dport, 
+    struct protocol_info *proto_info
+) {
+    if (parse_tcp_ts(context->tcp, context->dissector->end, &proto_info->pid, 
+        &proto_info->reply_pid) < 0) {
         return -1; // Possible TODO, fall back on seq/ack instead
+    }
 
     // Do not timestamp pure ACKs (no payload)
     void *nh_pos = (context->tcp + 1) + (context->tcp->doff << 2);
@@ -327,8 +340,10 @@ static __always_inline int parse_tcp_identifier(struct parsing_context *context,
 }
 
 /* This is a bit of a hackjob from the original */
-static __always_inline int parse_packet_identifier(struct parsing_context *context, struct packet_info *p_info)
-{
+static __always_inline int parse_packet_identifier(
+    struct parsing_context *context, 
+    struct packet_info *p_info
+) {
     p_info->time = context->now;
     if (context->dissector->eth_type == ETH_P_IP)
     {
@@ -417,9 +432,10 @@ get_reverse_flowstate_from_packet(struct dual_flow_state *df_state,
  * Initilize a new (assumed 0-initlized) dual flow state based on the current
  * packet.
  */
-static __always_inline void init_dualflow_state(struct dual_flow_state *df_state,
-                                                struct packet_info *p_info)
-{
+static __always_inline void init_dualflow_state(
+    struct dual_flow_state *df_state,
+    struct packet_info *p_info
+) {
     struct flow_state *fw_state =
         get_flowstate_from_packet(df_state, p_info);
     struct flow_state *rev_state =
@@ -430,8 +446,11 @@ static __always_inline void init_dualflow_state(struct dual_flow_state *df_state
 }
 
 static __always_inline struct dual_flow_state *
-create_dualflow_state(struct parsing_context *ctx, struct packet_info *p_info, bool *new_flow)
-{
+create_dualflow_state(
+    struct parsing_context *ctx, 
+    struct packet_info *p_info, 
+    bool *new_flow
+) {
     struct network_tuple *key = get_dualflow_key_from_packet(p_info);
     struct dual_flow_state new_state = {0};
 
@@ -454,9 +473,11 @@ create_dualflow_state(struct parsing_context *ctx, struct packet_info *p_info, b
 }
 
 static __always_inline struct dual_flow_state *
-lookup_or_create_dualflow_state(struct parsing_context *ctx, struct packet_info *p_info,
-                                bool *new_flow)
-{
+lookup_or_create_dualflow_state(
+    struct parsing_context *ctx, 
+    struct packet_info *p_info, 
+    bool *new_flow
+) {
     struct dual_flow_state *df_state;
 
     struct network_tuple *key = get_dualflow_key_from_packet(p_info);
@@ -481,9 +502,11 @@ static __always_inline bool is_flowstate_active(struct flow_state *f_state)
            f_state->conn_state != CONNECTION_STATE_CLOSED;
 }
 
-static __always_inline void update_forward_flowstate(struct packet_info *p_info,
-                                                     struct flow_state *f_state, bool *new_flow)
-{
+static __always_inline void update_forward_flowstate(
+    struct packet_info *p_info,
+    struct flow_state *f_state, 
+    bool *new_flow
+) {
     // "Create" flowstate if it's empty
     if (f_state->conn_state == CONNECTION_STATE_EMPTY &&
         p_info->pid_valid)
@@ -494,9 +517,11 @@ static __always_inline void update_forward_flowstate(struct packet_info *p_info,
     }
 }
 
-static __always_inline void update_reverse_flowstate(void *ctx, struct packet_info *p_info,
-                                                     struct flow_state *f_state)
-{
+static __always_inline void update_reverse_flowstate(
+    void *ctx, 
+    struct packet_info *p_info,
+    struct flow_state *f_state
+) {
     if (!is_flowstate_active(f_state))
         return;
 
@@ -508,8 +533,10 @@ static __always_inline void update_reverse_flowstate(void *ctx, struct packet_in
     }
 }
 
-static __always_inline bool is_new_identifier(struct packet_id *pid, struct flow_state *f_state)
-{
+static __always_inline bool is_new_identifier(
+    struct packet_id *pid, 
+    struct flow_state *f_state
+) {
     if (pid->flow.proto == IPPROTO_TCP)
         /* TCP timestamps should be monotonically non-decreasing
          * Check that pid > last_ts (considering wrap around) by
@@ -534,9 +561,12 @@ static __always_inline bool is_rate_limited(__u64 now, __u64 last_ts)
 /*
  * Attempt to create a timestamp-entry for packet p_info for flow in f_state
  */
-static __always_inline void pping_timestamp_packet(struct flow_state *f_state, void *ctx,
-                                                   struct packet_info *p_info, bool new_flow)
-{
+static __always_inline void pping_timestamp_packet(
+    struct flow_state *f_state, 
+    void *ctx,
+    struct packet_info *p_info, 
+    bool new_flow
+) {
     if (!is_flowstate_active(f_state) || !p_info->pid_valid)
         return;
 
@@ -590,7 +620,9 @@ static __always_inline void pping_match_packet(struct flow_state *f_state,
     }
 
     // Update the most performance map to include this data
-    struct rotating_performance *perf = (struct rotating_performance *)bpf_map_lookup_elem(&rtt_tracker, active_host);
+    struct rotating_performance *perf = 
+        (struct rotating_performance *)bpf_map_lookup_elem(
+            &rtt_tracker, active_host);
     if (perf == NULL) return;
     __sync_fetch_and_add(&perf->next_entry, 1);
     __u32 next_entry = perf->next_entry;
@@ -600,10 +632,12 @@ static __always_inline void pping_match_packet(struct flow_state *f_state,
     }
 }
 
-static __always_inline void close_and_delete_flows(void *ctx, struct packet_info *p_info,
-                                                   struct flow_state *fw_flow,
-                                                   struct flow_state *rev_flow)
-{
+static __always_inline void close_and_delete_flows(
+    void *ctx, 
+    struct packet_info *p_info,
+    struct flow_state *fw_flow,
+    struct flow_state *rev_flow
+) {
     // Forward flow closing
     if (p_info->event_type == FLOW_EVENT_CLOSING ||
         p_info->event_type == FLOW_EVENT_CLOSING_BOTH)
@@ -631,8 +665,10 @@ static __always_inline void close_and_delete_flows(void *ctx, struct packet_info
  * timestamp of the packet, tries to match packet against previous timestamps,
  * calculates RTTs and pushes messages to userspace as appropriate.
  */
-static __always_inline void pping_parsed_packet(struct parsing_context *context, struct packet_info *p_info)
-{
+static __always_inline void pping_parsed_packet(
+    struct parsing_context *context, 
+    struct packet_info *p_info
+) {
     struct dual_flow_state *df_state;
     struct flow_state *fw_flow, *rev_flow;
     bool new_flow = false;
@@ -660,7 +696,9 @@ static __always_inline void tc_pping_start(struct parsing_context *context)
 {
     // Check to see if we can store perf info. Bail if we've hit the limit.
     // Copying occurs because otherwise the validator complains.
-    struct rotating_performance *perf = (struct rotating_performance *)bpf_map_lookup_elem(&rtt_tracker, context->active_host);
+    struct rotating_performance *perf = 
+        (struct rotating_performance *)bpf_map_lookup_elem(
+            &rtt_tracker, context->active_host);
     if (perf) {
         if (perf->next_entry >= MAX_PERF_SECONDS-1) {
             //bpf_debug("Flow has max samples. Not sampling further until next reset.");

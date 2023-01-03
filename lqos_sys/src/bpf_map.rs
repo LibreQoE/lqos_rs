@@ -91,7 +91,7 @@ where
             )
         };
         if err != 0 {
-            Err(Error::msg("Unable to insert into map"))
+            Err(Error::msg(format!("Unable to insert into map ({err})")))
         } else {
             Ok(())
         }
@@ -141,6 +141,20 @@ where
                 if bpf_map_get_next_key(self.fd, prev_key as *mut c_void, key_ptr as *mut c_void) != 0 {
                     break;
                 }
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn clear_no_repeat(&mut self) -> Result<()> {
+        let mut key = K::default();
+        let mut prev_key: *mut K = null_mut();
+        unsafe {
+            let key_ptr: *mut K = &mut key;
+            while bpf_map_get_next_key(self.fd, prev_key as *mut c_void, key_ptr as *mut c_void)== 0
+            {
+                bpf_map_delete_elem(self.fd, key_ptr as *mut c_void);
+                prev_key = key_ptr;
             }
         }
         Ok(())

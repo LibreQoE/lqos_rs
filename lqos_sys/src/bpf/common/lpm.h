@@ -47,19 +47,36 @@ struct {
 	__uint(map_flags, BPF_F_NO_PREALLOC);
 } map_ip_to_cpu_and_tc_recip SEC(".maps");
 
+// Performs an LPM lookup for an `ip_hash.h` encoded address, taking
+// into account redirection and "on a stick" setup.
 static __always_inline struct ip_hash_info * setup_lookup_key_and_tc_cpu(
-    int direction, 
-    struct ip_hash_key * lookup_key, 
+    // The "direction" constant from the main program. 1 = Internet,
+    // 2 = LAN, 3 = Figure it out from VLAN tags
+    int direction,
+    // Pointer to the "lookup key", which should contain the IP address
+    // to search for. Prefix length will be set for you.
+    struct ip_hash_key * lookup_key,
+    // Pointer to the traffic dissector.
     struct dissector_t * dissector,
+    // Which VLAN represents the Internet, in redirection scenarios? (i.e.
+    // when direction == 3)
     __be16 internet_vlan,
+    // Out variable setting the real "direction" of traffic when it has to
+    // be calculated.
     int * out_effective_direction
 ) 
 {
     lookup_key->prefixlen = 128;
+    // Normal preset 2-interface setup, no need to calculate any direction
+    // related VLANs.
     if (direction < 3) {
-        lookup_key->address = (direction == 1) ? dissector->dst_ip : dissector->src_ip;
+        lookup_key->address = (direction == 1) ? dissector->dst_ip : 
+            dissector->src_ip;
         *out_effective_direction = direction;
-        struct ip_hash_info * ip_info = bpf_map_lookup_elem(&map_ip_to_cpu_and_tc, lookup_key);
+        struct ip_hash_info * ip_info = bpf_map_lookup_elem(
+            &map_ip_to_cpu_and_tc, 
+            lookup_key
+        );
         return ip_info;
     } else {
         if (dissector->current_vlan == internet_vlan) {
@@ -67,33 +84,55 @@ static __always_inline struct ip_hash_info * setup_lookup_key_and_tc_cpu(
             // Therefore it is download.
             lookup_key->address = dissector->dst_ip;
             *out_effective_direction = 1;
-            struct ip_hash_info * ip_info = bpf_map_lookup_elem(&map_ip_to_cpu_and_tc, lookup_key);
+            struct ip_hash_info * ip_info = bpf_map_lookup_elem(
+                &map_ip_to_cpu_and_tc, 
+                lookup_key
+            );
             return ip_info;
         } else {
             // Packet is coming IN from the ISP.
             // Therefore it is UPLOAD.
             lookup_key->address = dissector->src_ip;
             *out_effective_direction = 2;
-            struct ip_hash_info * ip_info = bpf_map_lookup_elem(&map_ip_to_cpu_and_tc_recip, lookup_key);
+            struct ip_hash_info * ip_info = bpf_map_lookup_elem(
+                &map_ip_to_cpu_and_tc_recip, 
+                lookup_key
+            );
             return ip_info;
         }
     }
 }
 
+// For the TC side, the dissector is different. Operates similarly to
+// `setup_lookup_key_and_tc_cpu`. Performs an LPM lookup for an `ip_hash.h` 
+// encoded address, taking into account redirection and "on a stick" setup.
 static __always_inline struct ip_hash_info * tc_setup_lookup_key_and_tc_cpu(
-    int direction, 
+    // The "direction" constant from the main program. 1 = Internet,
+    // 2 = LAN, 3 = Figure it out from VLAN tags
+    int direction,
+    // Pointer to the "lookup key", which should contain the IP address
+    // to search for. Prefix length will be set for you.
     struct ip_hash_key * lookup_key, 
+    // Pointer to the traffic dissector.
     struct tc_dissector_t * dissector,
+    // Which VLAN represents the Internet, in redirection scenarios? (i.e.
+    // when direction == 3)
     __be16 internet_vlan,
+    // Out variable setting the real "direction" of traffic when it has to
+    // be calculated.
     int * out_effective_direction
 ) 
 {
     lookup_key->prefixlen = 128;
 	// Direction is reversed because we are operating on egress
     if (direction < 3) {
-        lookup_key->address = (direction == 1) ? dissector->src_ip : dissector->dst_ip;
+        lookup_key->address = (direction == 1) ? dissector->src_ip : 
+            dissector->dst_ip;
         *out_effective_direction = direction;
-        struct ip_hash_info * ip_info = bpf_map_lookup_elem(&map_ip_to_cpu_and_tc, lookup_key);
+        struct ip_hash_info * ip_info = bpf_map_lookup_elem(
+            &map_ip_to_cpu_and_tc, 
+            lookup_key
+        );
         return ip_info;
     } else {
         //bpf_debug("Current VLAN (TC): %d", dissector->current_vlan);
@@ -105,7 +144,10 @@ static __always_inline struct ip_hash_info * tc_setup_lookup_key_and_tc_cpu(
             lookup_key->address = dissector->src_ip;
             *out_effective_direction = 2;
             //bpf_debug("Reciprocal lookup");
-            struct ip_hash_info * ip_info = bpf_map_lookup_elem(&map_ip_to_cpu_and_tc_recip, lookup_key);
+            struct ip_hash_info * ip_info = bpf_map_lookup_elem(
+                &map_ip_to_cpu_and_tc_recip, 
+                lookup_key
+            );
             return ip_info;
         } else {
             // Packet is going OUT to the LAN.
@@ -113,10 +155,16 @@ static __always_inline struct ip_hash_info * tc_setup_lookup_key_and_tc_cpu(
             lookup_key->address = dissector->dst_ip;
             *out_effective_direction = 1;
             //bpf_debug("Forward lookup");
-            struct ip_hash_info * ip_info = bpf_map_lookup_elem(&map_ip_to_cpu_and_tc, lookup_key);
+            struct ip_hash_info * ip_info = bpf_map_lookup_elem(
+                &map_ip_to_cpu_and_tc, 
+                lookup_key
+            );
             return ip_info;
         }
     }
-    struct ip_hash_info * ip_info = bpf_map_lookup_elem(&map_ip_to_cpu_and_tc, lookup_key);
+    struct ip_hash_info * ip_info = bpf_map_lookup_elem(
+        &map_ip_to_cpu_and_tc, 
+        lookup_key
+    );
     return ip_info;
 }

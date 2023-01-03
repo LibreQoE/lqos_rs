@@ -8,28 +8,47 @@
 #include "../common/skb_safety.h"
 #include "../common/debug.h"
 #include "../common/ip_hash.h"
+#include "../common/bifrost.h"
 
+// Packet dissector for XDP. We don't have any help from Linux at this
+// point.
 struct dissector_t
 {
+    // Pointer to the XDP context.
     struct xdp_md *ctx;
+    // Start of data
     void *start;
+    // End of data
     void *end;
+    // Total length (end - start)
     __u32 skb_len;
+    // Ethernet header once found (NULL until then)
     struct ethhdr *ethernet_header;
+    // Ethernet packet type once found (0 until then)
     __u16 eth_type;
+    // Layer-3 offset if found (0 until then)
     __u32 l3offset;
+    // IPv4/6 header once found
     union iph_ptr ip_header;
+    // Source IP address, encoded by `ip_hash.h`
     struct in6_addr src_ip;
+    // Destination IP address, encoded by `ip_hash.h`
     struct in6_addr dst_ip;
+    // Current VLAN tag. If there are multiple tags, it will be
+    // the INNER tag.
     __be16 current_vlan;
 };
 
+// Representation of the VLAN header type.
 struct vlan_hdr
 {
+    // Tagged VLAN number
     __be16 h_vlan_TCI;
+    // Protocol for the next section
     __be16 h_vlan_encapsulated_proto;
 };
 
+// Representation of the PPPoE protocol header.
 struct pppoe_proto
 {
     __u8 pppoe_version_type;
@@ -50,8 +69,10 @@ struct pppoe_proto
 // * dissector - pointer to a local dissector object to be initialized
 //
 // Returns TRUE if all is good, FALSE if the process cannot be completed
-static __always_inline bool dissector_new(struct xdp_md *ctx, struct dissector_t *dissector)
-{
+static __always_inline bool dissector_new(
+    struct xdp_md *ctx, 
+    struct dissector_t *dissector
+) {
     dissector->ctx = ctx;
     dissector->start = (void *)(long)ctx->data;
     dissector->end = (void *)(long)ctx->data_end;
@@ -70,13 +91,18 @@ static __always_inline bool dissector_new(struct xdp_md *ctx, struct dissector_t
     return true;
 }
 
+// Helper function - is an eth_type an IPv4 or v6 type?
 static __always_inline bool is_ip(__u16 eth_type)
 {
     return eth_type == ETH_P_IP || eth_type == ETH_P_IPV6;
 }
 
-static __always_inline bool dissector_find_l3_offset(struct dissector_t *dissector)
-{
+// Locates the layer-3 offset, if present. Fast returns for various
+// common non-IP types. Will perform VLAN redirection if requested.
+static __always_inline bool dissector_find_l3_offset(
+    struct dissector_t *dissector, 
+    bool vlan_redirect
+) {
     if (dissector->ethernet_header == NULL)
     {
         bpf_debug("Ethernet header is NULL, still called offset check.");
@@ -109,25 +135,51 @@ static __always_inline bool dissector_find_l3_offset(struct dissector_t *dissect
         case ETH_P_8021AD:
         case ETH_P_8021Q:
         {
-            if SKB_OVERFLOW_OFFSET (dissector->start, dissector->end, offset, vlan_hdr)
+            if SKB_OVERFLOW_OFFSET (dissector->start, dissector->end, 
+                offset, vlan_hdr)
             {
                 return false;
             }
-            struct vlan_hdr *vlan = (struct vlan_hdr *)(dissector->start + offset);
+            struct vlan_hdr *vlan = (struct vlan_hdr *)
+                (dissector->start + offset);
             dissector->current_vlan = vlan->h_vlan_TCI;
             eth_type = bpf_ntohs(vlan->h_vlan_encapsulated_proto);
             offset += sizeof(struct vlan_hdr);
+            // VLAN Redirection is requested, so lookup a detination and
+            // switch the VLAN tag if required
+            if (vlan_redirect) {
+                #ifdef VERBOSE
+                bpf_debug("Searching for redirect %u:%u", 
+                    dissector->ctx->ingress_ifindex, 
+                    bpf_ntohs(dissector->current_vlan)
+                );
+                #endif
+                __u32 key = (dissector->ctx->ingress_ifindex << 16) | 
+                    bpf_ntohs(dissector->current_vlan);
+                struct bifrost_vlan * vlan_info = NULL;
+                vlan_info = bpf_map_lookup_elem(&bifrost_vlan_map, &key);
+                if (vlan_info) {
+                    #ifdef VERBOSE
+                    bpf_debug("Redirect to VLAN %u", 
+                        bpf_htons(vlan_info->redirect_to)
+                    );
+                    #endif
+                    vlan->h_vlan_TCI = bpf_htons(vlan_info->redirect_to);
+                }
+            }
         }
         break;
 
         // Handle PPPoE
         case ETH_P_PPP_SES:
         {
-            if SKB_OVERFLOW_OFFSET (dissector->start, dissector->end, offset, pppoe_proto)
+            if SKB_OVERFLOW_OFFSET (dissector->start, dissector->end, 
+                offset, pppoe_proto)
             {
                 return false;
             }
-            struct pppoe_proto *pppoe = (struct pppoe_proto *)(dissector->start + offset);
+            struct pppoe_proto *pppoe = (struct pppoe_proto *)
+                (dissector->start + offset);
             __u16 proto = bpf_ntohs(pppoe->proto);
             switch (proto)
             {
@@ -155,13 +207,18 @@ static __always_inline bool dissector_find_l3_offset(struct dissector_t *dissect
     return true;
 }
 
-static __always_inline bool dissector_find_ip_header(struct dissector_t *dissector)
-{
+// Searches for an IP header.
+static __always_inline bool dissector_find_ip_header(
+    struct dissector_t *dissector
+) {
     switch (dissector->eth_type)
     {
     case ETH_P_IP:
     {
-        if (dissector->start + dissector->l3offset + sizeof(struct iphdr) > dissector->end) return false;
+        if (dissector->start + dissector->l3offset + sizeof(struct iphdr) > 
+            dissector->end) {
+                return false;
+        }
         dissector->ip_header.iph = dissector->start + dissector->l3offset;
         if (dissector->ip_header.iph + 1 > dissector->end)
             return false;
@@ -172,7 +229,10 @@ static __always_inline bool dissector_find_ip_header(struct dissector_t *dissect
     break;
     case ETH_P_IPV6:
     {
-        if (dissector->start + dissector->l3offset + sizeof(struct ipv6hdr) > dissector->end) return false;
+        if (dissector->start + dissector->l3offset + 
+            sizeof(struct ipv6hdr) > dissector->end) {
+                return false;
+        }
         dissector->ip_header.ip6h = dissector->start + dissector->l3offset;
         if (dissector->ip_header.iph + 1 > dissector->end)
             return false;

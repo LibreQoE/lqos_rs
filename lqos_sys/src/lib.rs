@@ -15,6 +15,7 @@ mod lqos_kernel;
 mod tcp_rtt;
 mod throughput;
 mod xdp_ip_address;
+mod bifrost_maps;
 
 pub use ip_mapping::{add_ip_to_tc, clear_ips_from_tc, del_ip_from_tc, list_mapped_ips};
 pub use kernel_wrapper::LibreQoSKernels;
