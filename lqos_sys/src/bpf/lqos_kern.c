@@ -270,6 +270,10 @@ int bifrost(struct __sk_buff *skb)
             // We need to ONLY redirect if we have tagged packets, otherwise
             // we create STP loops and Bad Things (TM) happen.
             if (skb->vlan_tci > 0) {
+#ifdef VERBOSE
+                bpf_debug("(TC-IN) Redirecting back to same interface, \
+                    VLAN %u", skb->vlan_tci);
+#endif                
                 return do_tc_redirect(redirect_info->redirect_to);
             } else {
 #ifdef VERBOSE
