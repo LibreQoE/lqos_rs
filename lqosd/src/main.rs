@@ -29,6 +29,7 @@ async fn main() -> Result<()> {
 
     // Disable offloading
     if let Some(tuning) = &etc_lqos.tuning {
+        offloads::bpf_sysctls().await;
         if tuning.stop_irq_balance {
             offloads::stop_irq_balance().await;
         }        
