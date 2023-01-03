@@ -236,6 +236,8 @@ int tc_iphash_to_cpu(struct __sk_buff *skb)
 // Helper function to call the bpf_redirect function and note
 // errors from the TC-egress context.
 static __always_inline long do_tc_redirect(__u32 target) {
+    //bpf_debug("Packet would have been redirected to ifindex %u", target);
+    //return TC_ACT_UNSPEC; // Don't actually redirect, we're testing
     long ret = bpf_redirect(target, 0);
     if (ret != TC_ACT_REDIRECT) {
         bpf_debug("(TC-IN) TC Redirect call failed");
@@ -277,8 +279,8 @@ int bifrost(struct __sk_buff *skb)
                 return do_tc_redirect(redirect_info->redirect_to);
             } else {
 #ifdef VERBOSE
-                bpf_debug("(TC-IN) Not redirecting: packet src and dst \
-                     the same.");
+                bpf_debug("(TC-IN) Not redirecting: No VLAN tag, bare \
+                    redirect unsupported in VLAN mode.");
 #endif
                 return TC_ACT_UNSPEC;
             }
